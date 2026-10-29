@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operator Dashboard - Autonomous Taxi</title>
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --panel-bg: #1a1a1a;
+            --accent-green: #00ff00;
+            --accent-yellow: #ffcc00;
+            --text-light: #ffffff;
+            --text-dim: #a0a0a0;
+            --danger-red: #ff3333;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0; padding: 20px;
+            display: grid; grid-template-columns: 1fr 300px;
+            gap: 20px; height: 100vh; box-sizing: border-box;
+        }
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid #333; border-radius: 8px;
+            padding: 20px; display: flex; flex-direction: column;
+        }
+        h2 {
+            margin-top: 0; color: var(--accent-green);
+            font-size: 1.2rem; text-transform: uppercase;
+            border-bottom: 1px solid #333; padding-bottom: 10px;
+        }
+        #map-container {
+            display: grid; grid-template-columns: repeat(10, 1fr);
+            gap: 2px; background-color: #333; border: 2px solid #444;
+            flex-grow: 1; margin-bottom: 20px;
+        }
+        .grid-cell {
+            background-color: #222; aspect-ratio: 1;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; font-weight: bold;
+        }
+        .cell-path { background-color: #004400; color: var(--accent-green); }
+        .cell-vehicle { background-color: var(--accent-green) !important; color: var(--bg-dark) !important; }
+        .controls { display: flex; gap: 10px; }
+        button {
+            flex: 1; padding: 12px; border: none; border-radius: 4px;
+            font-weight: bold; cursor: pointer; text-transform: uppercase;
+        }
+        button:hover { opacity: 0.8; }
+        #btn-start { background-color: var(--accent-green); color: var(--bg-dark); }
+        #btn-stop { background-color: var(--danger-red); color: white; }
+        
+        .status-box {
+            background-color: #000; border-left: 4px solid var(--accent-green);
+            padding: 15px; margin-bottom: 20px; font-family: monospace; font-size: 1.1rem;
+        }
+        .status-box.fault { border-left-color: var(--danger-red); color: var(--accent-yellow); }
+        
+        .log-list {
+            list-style: none; padding: 0; margin: 0; overflow-y: auto;
+            flex-grow: 1; font-family: monospace; font-size: 0.9rem; color: var(--text-dim);
+        }
+        .log-list li { padding: 5px 0; border-bottom: 1px solid #333; }
+        .log-list li span.time { color: var(--accent-yellow); margin-right: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="panel">
+        <h2>Operator Map</h2>
+        <div id="map-container"></div>
+        <h2>Mission Controls</h2>
+        <div class="controls">
+            <button id="btn-start" onclick="simulateBooking()">Test Booking</button>
+            <button id="btn-stop" onclick="triggerEmergencyStop()">E-Stop</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>System Status</h2>
+        <div id="status-display" class="status-box">
+            State: READY<br>Distance: 0.0m
+        </div>
+        <h2>Event Log</h2>
+        <ul id="event-log" class="log-list">
+            <li><span class="time">--:--:--</span> UI Initialized.</li>
+        </ul>
+    </div>
+
+    <script>
+        function initGrid() {
+            const container = document.getElementById('map-container');
+            container.innerHTML = '';
+            for (let r = 0; r < 7; r++) {
+                for (let c = 0; c < 10; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.id = `cell-${r}-${c}`;
+                    container.appendChild(cell);
+                }
+            }
+        }
+
+        function logEvent(msg) {
+            const log = document.getElementById('event-log');
+            const li = document.createElement('li');
+            li.innerHTML = `<span class="time">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
+            log.insertBefore(li, log.firstChild);
+        }
+
+        function updateStatus(state, dist = 0, fault = "") {
+            const display = document.getElementById('status-display');
+            display.className = (state === "FAULT" || state === "PAUSED") ? "status-box fault" : "status-box";
+            display.innerHTML = (state === "FAULT" || state === "PAUSED") 
+                ? `State: ${state}<br>Reason: ${fault}` 
+                : `State: ${state}<br>Distance: ${dist}m`;
+        }
+
+        let telemetryTimer = null;
+        let lastKnownState = "READY";
+
+        async function pollTelemetry() {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/vehicle/telemetry', { cache: 'no-store' });
+                const data = await response.json();
+                
+                updateStatus(data.state, 0, data.fault_reason);
+
+                if (data.state !== lastKnownState) {
+                    if (data.state === "PAUSED") logEvent(`TRAFFIC STOP: ${data.fault_reason}`);
+                    if (data.state === "ACTIVE" && lastKnownState === "PAUSED") logEvent(`PATH CLEAR: Resuming movement.`);
+                    lastKnownState = data.state;
+                }
+
+                if (data.current_position) {
+                    // Clear previous taxi emoji
+                    document.querySelectorAll('.cell-vehicle').forEach(cell => {
+                        cell.classList.remove('cell-vehicle');
+                        cell.innerText = cell.classList.contains('cell-path') ? "•" : "";
+                    });
+
+                    // Draw new taxi emoji
+                    const match = data.current_position.match(/\[(\d+),(\d+)\]/);
+                    if (match) {
+                        const activeCell = document.getElementById(`cell-${match[1]}-${match[2]}`);
+                        if (activeCell) {
+                            activeCell.classList.add('cell-vehicle');
+                            activeCell.innerText = "🚕";
+                        }
+                    }
+                }
+                
+                if (data.state === "FAULT" || data.state === "COMPLETED") clearInterval(telemetryTimer);
+                
+            } catch (error) {
+                logEvent(`UI Error: ${error.message}`);
+                clearInterval(telemetryTimer);
+            }
+        }
+
+        async function simulateBooking() {
+            try {
+                logEvent("Requesting route from server...");
+                const response = await fetch('http://127.0.0.1:8000/api/passenger/book', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ start_node: "STOP_A", destination_node: "STOP_C" })
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    logEvent("Route locked. Driving to destination.");
+                    
+                    // Draw path
+                    initGrid();
+                    data.route.forEach((coord, i) => {
+                        const m = coord.match(/\[(\d+),(\d+)\]/);
+                        if (m) {
+                            const cell = document.getElementById(`cell-${m[1]}-${m[2]}`);
+                            if (cell) {
+                                cell.classList.add('cell-path');
+                                cell.innerText = (i === 0) ? "A" : (i === data.route.length - 1) ? "B" : "•";
+                            }
+                        }
+                    });
+
+                    if (telemetryTimer) clearInterval(telemetryTimer);
+                    telemetryTimer = setInterval(pollTelemetry, 500);
+                } else {
+                    logEvent(`Booking failed: ${data.detail}`);
+                }
+            } catch (error) {
+                logEvent("Cannot connect to server. Is Uvicorn running?");
+            }
+        }
+
+        async function triggerEmergencyStop() {
+            fetch('http://127.0.0.1:8000/api/vehicle/obstacle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ object_name: "Manual UI Override", confidence: 1.0 })
+            });
+        }
+
+        initGrid();
+    </script>
+</body>
+</html>
