@@ -37,7 +37,7 @@ test('frontend serves assets and proxies API cookies, origins and failures', asy
     assert.equal(data.forwarded,undefined);
     assert.equal(data.url,'/api/auth/me?q=test');
     assert.ok(forwarded.headers['set-cookie'][0].includes('HttpOnly'));
-    for(const path of ['/static/../../pyproject.toml','/static/%2e%2e/server.mjs','/server.mjs','/static/%00.html']) assert.equal((await request(port,path)).status,404);
+    for(const path of ['/static/../../pyproject.toml','/static/%2e%2e/server.mjs','/server.mjs','/static/%00.html','/static/yolox_tiny.pth','/backend/taxi/perception/benchmark.py']) assert.equal((await request(port,path)).status,404);
     assert.equal((await request(port,'/',{Host:'evil.example'})).status,403);
     assert.equal((await request(port,'/%ZZ')).status,400);
     await new Promise(resolve=>api.close(resolve));

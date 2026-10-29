@@ -63,7 +63,7 @@ only. This remains a single-process simulation, not a production deployment.
 See [accounts, roles, migrations and backup/restore](docs/ADMIN-ACCOUNTS.md) and the
 [Member 3 validation record](docs/ADMIN-RECORDS.md).
 
-## Interfaces and project theme
+## Interfaces, design and backend brain
 
 The frontend now includes **Passenger** (`/passenger`), **Operator** (`/operator`),
 **Admin** (`/admin`) and **Diagnostics** (`/diagnostics`), plus shared account access
@@ -73,6 +73,8 @@ records/configuration on Admin, and inspect simulated validity/missing hardware 
 
 Stale or disconnected telemetry is explicitly labelled, and current measurements/progress
 become unavailable. Stop is a prominent software-only action, including on phones.
+The planner, supervisor, perception scripts and weights remain backend-owned; see
+[backend brain boundaries](backend/README.md#backend-owned-brain).
 See [frontend validation and accessibility review](docs/FRONTEND-REVIEW.md).
 
 ## Try the full demo
@@ -106,6 +108,7 @@ frontend/
   server.mjs             Local frontend server; forwards /api and /ws
   tests/                 Frontend/proxy tests
 backend/
+  vendor/                Optional backend-only third-party references
   taxi/                  FastAPI, accounts, supervisor, navigation and SQLite
   tests/                 Backend API, ownership and simulator tests
   api.py                 Compatibility ASGI entry point
