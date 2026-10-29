@@ -43,3 +43,21 @@ Open firmware/arduino, verify or change the board target, then use the same pio 
 ## Before wiring
 
 Confirm a stable supply, shared signal reference, UART level shifting when a 5 V Arduino transmits to the 3.3 V ESP32, and camera/SD/boot-pin conflicts. Do not power motors from GPIO. Test physical disable with motor power isolated before considering actuation. Adding a driver requires a board-specific implementation and measured stopping behavior; there is no hidden switch enabling motors in this release.
+
+## Priority 1: confirmation handoff
+
+Owner: **Member 4**; interface reviewer: **Member 2**. This is the first blocker
+for real vehicle integration. The assumptions above are not confirmed inventory.
+
+- [ ] Record exact board revisions/camera pin map and controller model.
+- [ ] Record driver, steering method, motor/power ratings, supply protection and logic levels.
+- [ ] Attach a pin-to-pin wiring diagram covering UART level shifting, grounds, boot/camera conflicts and programmer isolation.
+- [ ] Record sensor/encoder/feedback models, pins, calibration and measured timeout behavior.
+- [ ] Document independent physical motor disable, reset behavior and planned braking measurements.
+- [ ] Add confirmer/reviewer names, date and evidence links to this record.
+
+After review, build the confirmed targets and record compiler logs; then capture a
+JPEG and test PING/STOP/telemetry with motors disabled. STOP receipt is not measured
+braking. Only after read-only telemetry/freshness tests and measured local protection
+may physical integration proceed. No confirmation, board build or bench result is
+claimed by the frontend/backend merge.

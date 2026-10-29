@@ -1,6 +1,7 @@
 """Offline administration: python -m taxi.manage --help. Stop the server first."""
 
 import argparse
+import json
 import getpass
 import os
 import sqlite3
@@ -12,6 +13,8 @@ from pydantic import ValidationError
 
 from .auth import PASSWORDS
 from .storage import Store, utc_now
+from .migrations import SCHEMA_VERSION
+from .locking import DatabaseLease
 
 
 def create_admin(database, username, password):
@@ -21,25 +24,30 @@ def create_admin(database, username, password):
         validated = NewUser(username=username, password=password, role="admin")
     except ValidationError:
         raise ValueError("Use a 3–64 character username and a 12–128 character password") from None
-    store = Store(str(database), recover=False)
-    try:
-        with store.db:
-            # Bootstrap only; further admins must be created through authenticated UI/API.
-            if store.db.execute("SELECT 1 FROM users WHERE role='admin' AND enabled=1").fetchone():
-                raise ValueError("An enabled administrator already exists; use account management")
-            store.db.execute(
-                "INSERT INTO users(id,username,password_hash,role,created_at) VALUES(?,?,?,?,?)",
-                (
-                    uuid.uuid4().hex,
-                    validated.username.casefold(),
-                    PASSWORDS.hash(password),
-                    "admin",
-                    utc_now(),
-                ),
-            )
-        store.event("admin_bootstrapped", {"username": validated.username.casefold()})
-    finally:
-        store.close()
+    with DatabaseLease(database):
+        store = Store(str(database), recover=False)
+        try:
+            with store.db:
+                # Bootstrap only; further admins must be created through authenticated UI/API.
+                if store.db.execute(
+                    "SELECT 1 FROM users WHERE role='admin' AND enabled=1"
+                ).fetchone():
+                    raise ValueError(
+                        "An enabled administrator already exists; use account management"
+                    )
+                store.db.execute(
+                    "INSERT INTO users(id,username,password_hash,role,created_at) VALUES(?,?,?,?,?)",
+                    (
+                        uuid.uuid4().hex,
+                        validated.username.casefold(),
+                        PASSWORDS.hash(password),
+                        "admin",
+                        utc_now(),
+                    ),
+                )
+            store.event("admin_bootstrapped", {"username": validated.username.casefold()})
+        finally:
+            store.close()
 
 
 def copy_database(source, output, restore=False):
@@ -58,7 +66,7 @@ def copy_database(source, output, restore=False):
                 raise ValueError("Source integrity check failed")
             if src.execute("PRAGMA foreign_key_check").fetchall():
                 raise ValueError("Source foreign-key check failed")
-            if src.execute("PRAGMA user_version").fetchone()[0] not in (0, 1):
+            if src.execute("PRAGMA user_version").fetchone()[0] not in range(SCHEMA_VERSION + 1):
                 raise ValueError("Unsupported backup schema")
             tables = {
                 r[0] for r in src.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -85,6 +93,12 @@ def main():
     bootstrap = commands.add_parser("create-admin", help="Bootstrap the first admin, offline")
     bootstrap.add_argument("--database", default="runtime/taxi.sqlite3")
     bootstrap.add_argument("--username", required=True)
+    provision = commands.add_parser(
+        "provision-accounts", help="Offline generated-password accounts; no overwrite"
+    )
+    provision.add_argument("--database", default="runtime/taxi.sqlite3")
+    provision.add_argument("--manifest", required=True)
+    provision.add_argument("--credentials-out", required=True)
     for action in ("backup", "restore"):
         command = commands.add_parser(
             action, help="Copy to a new output; never overwrite live data"
@@ -98,9 +112,17 @@ def main():
             if password != getpass.getpass("Confirm password: "):
                 raise ValueError("Passwords do not match")
             create_admin(args.database, args.username, password)
+        elif args.command == "provision-accounts":
+            from .provisioning import provision_accounts
+
+            manifest = json.loads(Path(args.manifest).read_text())
+            accounts = provision_accounts(args.database, manifest, args.credentials_out)
+            print(
+                f"Provisioned {len(accounts)} accounts. Private credentials written to the requested output; change at first login."
+            )
         else:
             copy_database(args.source, args.output, restore=args.command == "restore")
-    except (ValueError, sqlite3.Error) as exc:
+    except (ValueError, RuntimeError, OSError, sqlite3.Error) as exc:
         parser.exit(1, f"{exc}\n")
     print("Completed. Keep database copies private: they contain account and trip records.")
 

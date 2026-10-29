@@ -4,6 +4,8 @@ Developed on `feature/admin-interface`; technical integration review is recorded
 Human team sign-off is separate from the automated checks.
 No real account credentials are bundled. The shared operator token is not an admin credential.
 
+The provisioned PROBIX database uses schema 2 and HTTPS; see [deployment guide](../deploy/README.md). Diagnostics is a fourth, read-only role with no private trips/events or commands. Provisioned accounts must change their passwords before workspace access. Schema 2 preserves existing owners/sessions/configuration and adds diagnostics plus mandatory-password-change support.
+
 ## First administrator and local startup
 
 1. Stop the single taxi server. Preserve existing runtime data; do not delete it.

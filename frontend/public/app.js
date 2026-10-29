@@ -52,6 +52,7 @@ for(const id of ['obstacle','sensor_failed','link_failed'])$(id).onchange=()=>ac
 async function authorize(demo=false){
   try{
     const data=await TaxiApi.request('/api/auth/me',demo?{token:$('token').value}:{});principal=data.user;csrf=data.csrf_token;token=demo?$('token').value:'';if(!demo)$('token').value='';
+    if(principal.must_change_password){principal=null;token='';$('token').value='';Taxi.text('access-note','Change your temporary password through Account before using operator controls.');controls();return;}
     Taxi.text('access-note',allowed()?`Authorized operator · ${principal.username}`:`${principal.role} account · Operator commands unavailable.`);
     Taxi.message('feedback',allowed()?'Ready for an authorized command when telemetry is fresh.':'Use an operator account for mission controls.');await history();
   }catch(error){principal=null;token='';Taxi.text('access-note','Sign in through Account, or use an enabled local demo token.');if(demo)TaxiApi.showError(error,'feedback');}

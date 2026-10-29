@@ -82,6 +82,7 @@ Taxi.watchTelemetry(s=>{
       const span=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('small');strong.textContent=`${id} · ${name}`;small.className='stop-note';small.textContent='Campus destination';span.append(strong,small);label.append(input,span);options.append(label);input.onchange=controls;
     }
     const data=await TaxiApi.request('/api/auth/me');user=data.user;csrf=data.csrf_token;
+    if(user.must_change_password){identity('Change your temporary password on Account before booking.');return;}
     if(user.role!=='passenger'){identity('Use a passenger account to book and see your own trips.');return;}
     Taxi.text($('passenger-access').querySelector('strong'),`Passenger access · ${user.username}`);Taxi.text('passenger-identity','Your identity is applied automatically to every request.');const link=$('passenger-access').querySelector('a');link.href='/account';link.textContent='Manage account →';Taxi.message('passenger-feedback','Choose a destination when the simulated vehicle is ready.');await refreshTrips();controls();
   }catch(error){if(error.status===401)identity();else TaxiApi.showError(error,'passenger-feedback');}

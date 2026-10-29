@@ -25,7 +25,7 @@ async def start(body: TripRequest, request: Request):
 
 @router.get("/api/trips")
 async def trips(request: Request):
-    user = request.app.state.auth.identity(request)
+    user = request.app.state.auth.require(request, "passenger", "operator", "admin")
     if user["role"] == "passenger":
         return [
             dict(r)
@@ -39,7 +39,11 @@ async def trips(request: Request):
 
 @router.get("/api/trips/{trip_id}")
 async def trip(trip_id: str, request: Request):
-    return trip_for(request.app, request.app.state.auth.identity(request), trip_id)
+    return trip_for(
+        request.app,
+        request.app.state.auth.require(request, "passenger", "operator", "admin"),
+        trip_id,
+    )
 
 
 @router.post("/api/trips/{trip_id}/cancel")

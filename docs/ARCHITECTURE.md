@@ -25,6 +25,15 @@ flowchart TD
 
 The graph coordinates are virtual metres; A, B and C are stops and J is a junction. A shortest graph route is selected before simulation begins. This version follows ideal geometry; it has no vehicle dynamics, acceleration model, learned perception, lane detection or physical localization.
 
+## Backend brain boundary
+
+Navigation, mission/safety state and simulated movement remain in `backend/taxi`.
+Experimental perception and weights remain in `backend/taxi/perception`; the optional
+legacy YOLOX reference is under `backend/vendor`. No model, planner or controller runs in
+the frontend. Frontend pages consume the existing role-protected API and telemetry.
+Neural perception is not loaded by the runnable simulation; real inference/hardware
+integration still requires the separate roadmap validation gates.
+
 ## States
 
 - READY: no movement; permits a mission only at a named stop with healthy inputs.

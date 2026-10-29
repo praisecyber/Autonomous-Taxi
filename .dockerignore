@@ -1,0 +1,17 @@
+.git
+.venv
+.env
+.env.*
+runtime
+**/__pycache__
+**/*.pyc
+**/*.egg-info
+**/*.pth
+**/*.pt
+**/*.onnx
+backend/vendor/YOLOX
+backend/tests
+frontend/tests
+build
+dist
+recordings

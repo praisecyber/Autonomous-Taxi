@@ -14,7 +14,7 @@ PASSWORDS = PasswordHash.recommended()  # Argon2id via pwdlib[argon2]
 DUMMY_HASH = PASSWORDS.hash(secrets.token_urlsafe(32))
 SESSION_SECONDS = 8 * 60 * 60
 COOKIE = "taxi_session"
-ROLES = {"passenger", "operator", "admin"}
+ROLES = {"passenger", "operator", "admin", "diagnostics"}
 
 
 def digest(value):
@@ -26,7 +26,10 @@ def csrf_for(token):
 
 
 def public_user(row):
-    return {key: row[key] for key in ("id", "username", "role", "enabled", "created_at")}
+    return {
+        key: row[key]
+        for key in ("id", "username", "role", "enabled", "created_at", "must_change_password")
+    }
 
 
 class Auth:
@@ -64,6 +67,14 @@ class Auth:
                 origin = request.headers.get("origin")
                 if origin and origin != str(request.base_url).rstrip("/"):
                     raise HTTPException(403, "Cross-origin request rejected")
+            if row["must_change_password"] and request.url.path not in {
+                "/api/auth/me",
+                "/api/auth/logout",
+                "/api/auth/password",
+            }:
+                raise HTTPException(
+                    403, "Change your temporary password through Account before continuing"
+                )
             return public_user(row)
         if required:
             raise HTTPException(401, "Sign in required")
