@@ -17,7 +17,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --check taxi/static/app.js
-      - run: node --check taxi/static/admin.js
-      - run: node --check taxi/static/account.js
-      - run: node --check taxi/static/operator.js
+      - run: node --check frontend/public/app.js
+      - run: node --check frontend/public/admin.js
+      - run: node --check frontend/public/account.js
+      - run: node --check frontend/public/operator.js
+      - run: node --check frontend/server.mjs
+      - run: node --test frontend/tests/server.test.mjs

@@ -4,9 +4,8 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from .storage import Store
 from .supervisor import Supervisor
@@ -17,8 +16,6 @@ from .routers.admin import router as account_router
 from .routers.operator import router as operator_router
 from .routers.passenger import router as passenger_router
 from .routers.common import visible_snapshot
-
-STATIC = Path(__file__).parent / "static"
 
 
 def create_app(db_path=None, operator_token=None, run_loop=True):
@@ -100,19 +97,6 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
         response.headers["Referrer-Policy"] = "same-origin"
         return response
 
-    @app.get("/operator", include_in_schema=False)
-    @app.get("/", include_in_schema=False)
-    async def index():
-        return FileResponse(STATIC / "index.html")
-
-    @app.get("/admin", include_in_schema=False)
-    async def admin():
-        return FileResponse(STATIC / "admin.html")
-
-    @app.get("/account", include_in_schema=False)
-    async def account():
-        return FileResponse(STATIC / "account.html")
-
     @app.get("/api/health")
     async def health():
         return {
@@ -167,5 +151,4 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
         except (WebSocketDisconnect, RuntimeError):
             pass
 
-    app.mount("/static", StaticFiles(directory=STATIC), name="static")
     return app

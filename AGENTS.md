@@ -6,8 +6,10 @@ Build a campus taxi using Python on a laptop, ESP32-CAM for camera / communicati
 v0.1 implements a simulation, backend, dashboard and bench-only firmware starters. Physical navigation and actuation are NOT implemented. Do not represent simulated data as real telemetry.
 
 ## Work rules
+- Frontend pages/assets live in frontend/public; backend Python code is backend/taxi and backend tests are backend/tests.
+- Run both processes from the repository root: `python -m taxi` and `node frontend/server.mjs`. The frontend proxies /api and /ws; do not add a second supervisor or permissive CORS to connect them.
 - Run `python -m pytest -q` and `ruff check .` after Python changes.
-- Run `node --check taxi/static/app.js` after browser JS changes.
+- Run `node --check frontend/public/app.js` after browser JS changes.
 - Keep dependencies in pyproject.toml. Keep package discovery limited to taxi.
 - Keep secrets and generated runtime data out of Git.
 - One server process owns one supervisor. Do not add multiple API workers.

@@ -2,11 +2,18 @@
 
 ## Running laptop application
 
+The source is split into `frontend/` and `backend/`. A Node.js frontend server on loopback
+port 3000 serves `frontend/public` and forwards `/api/*` HTTP requests and `/ws/telemetry`
+upgrades to the FastAPI backend on port 8000. FastAPI serves no HTML or static files.
+The backend package is `backend/taxi`; Python installation/test commands still run from
+the repository root using pyproject.toml. See [startup and API boundary](FRONTEND-BACKEND.md).
+
 The FastAPI lifespan creates one Store and one Supervisor. A 20 Hz asynchronous task advances simulation; a read-only WebSocket publishes snapshots at 5 Hz. Request handlers do not await while mutating the core, so mutations are serialized on the event loop. SQLite writes are synchronous and suitable only for this small prototype; a storage error faults motion in memory. A blocked event loop faults an active simulation when its next tick exceeds the configured timing window.
 
 ```mermaid
 flowchart TD
-  UI[Browser dashboard] -->|Authenticated mission or operator request| API[FastAPI]
+  UI[Browser dashboard] --> Frontend[Frontend server :3000]
+  Frontend -->|HTTP API / WebSocket proxy| API[FastAPI :8000]
   API --> Core[Single supervisor]
   Core --> Nav[Route graph and simulated movement]
   Nav --> Core
@@ -44,9 +51,17 @@ Camera work must eventually run outside the supervisor loop with bounded latest-
 
 ## Access and deployment
 
-All mutation and history/event endpoints require the configured bearer token. Public status, stop definitions, API documentation and the read-only WebSocket are appropriate only for the loopback development instance. Tokens are a development operator mechanism, not passenger account management. The browser keeps its entered token in memory only.
+Account sessions enforce passenger/operator/admin permissions and trip ownership. The
+legacy bearer-token operator demo is available only before accounts exist by default.
+See [account and integration contract](ADMIN-ACCOUNTS.md). Public simulated position,
+stop definitions, API docs and redacted telemetry remain local development features.
 
-Before LAN deployment: implement appropriate role-based access, protect telemetry and documentation, use TLS and device authentication, restrict origin/host access, and protect against connection flooding. Do not expose this development service directly to the internet.
+The browser uses its frontend origin for all requests. The local frontend proxy preserves
+Host/Origin and HttpOnly cookies, strips supplied forwarding headers, restricts accepted
+hosts to loopback and uses a fixed local API target. Backend CSRF/origin and WebSocket
+origin checks stay enabled; no wildcard credentialed CORS is needed. The Node server is
+for local development. HTTPS deployment needs a trusted production reverse proxy serving
+the frontend and routing /api and /ws to the single backend worker.
 
 ## Sources
 

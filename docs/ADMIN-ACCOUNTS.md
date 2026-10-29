@@ -15,7 +15,8 @@ No real account credentials are bundled. The shared operator token is not an adm
    Enter and confirm a 12–128 character password at hidden prompts. Do not put passwords
    in shell arguments, source files or chat. Usernames use 3–64 ASCII letters, digits,
    underscores, periods or hyphens, starting with a letter/digit. They are case-insensitive.
-5. Start `.venv/bin/python -m taxi`. Sign in through `/admin`. Create passenger, operator
+5. Start `.venv/bin/python -m taxi` for the API and `node frontend/server.mjs`
+   in another terminal for the frontend. Sign in through the frontend on port 3000 at `/admin`. Create passenger, operator
    or further administrator accounts and convey their initial credentials privately.
    Users can change their passwords at `/account`.
 
@@ -166,8 +167,8 @@ actual off-machine recovery remain the service owner's operational responsibilit
 ## Integration review against Member 2 main branch (29 October 2026)
 
 The review integrated main at `97aa432` and replaced disconnected prototype entry points
-with shared application-owned state. `taxi/routers/passenger.py` owns trip endpoints;
-`taxi/routers/operator.py` owns role-gated mission commands; `taxi/routers/admin.py` exposes
+with shared application-owned state. `backend/taxi/routers/passenger.py` owns trip endpoints;
+`backend/taxi/routers/operator.py` owns role-gated mission commands; `backend/taxi/routers/admin.py` exposes
 account/admin routes. None instantiate a supervisor. `/operator` serves the working
 dashboard, and the old standalone operator page redirects there. `uvicorn api:app` now
 uses the same canonical app factory as `python -m taxi`.

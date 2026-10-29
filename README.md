@@ -6,27 +6,37 @@ A runnable starting repository for the autonomous campus taxi project. The lapto
 
 ## Run on Windows
 
-Install Python 3.10+ and Git, extract this folder, then open PowerShell inside it:
+Install Python 3.10+, Node.js 22+ and Git, extract this folder, then open PowerShell inside it:
 
 ```powershell
 py -3.10 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-Copy-Item .env.example .env
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 .\.venv\Scripts\python.exe -m taxi
 ```
 
-Open **http://127.0.0.1:8000**. The operator token is `local-dev-only` unless changed in `.env`. Python 3.11 or 3.12 also works: select the installed version when creating the environment. Activation is unnecessary. API reference: http://127.0.0.1:8000/docs.
+In a **second terminal**, from the same repository root, start the frontend:
+
+```bash
+node frontend/server.mjs
+```
+
+Open **http://127.0.0.1:3000**. The operator token is `local-dev-only` unless changed in `.env`. Python 3.11 or 3.12 also works: select the installed version when creating the environment. Activation is unnecessary. API reference: http://127.0.0.1:3000/docs (forwarded to the backend on port 8000).
 
 Linux / macOS:
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -e '.[dev]'
-cp .env.example .env
+test -f .env || cp .env.example .env
 .venv/bin/python -m taxi
 ```
 
-Run one server process, one worker, and one vehicle supervisor. Do not add multiple Uvicorn workers: each would create a separate simulated vehicle. The default command listens only on loopback. Internet access is not needed after installing dependencies.
+Start `node frontend/server.mjs` in a second terminal on Linux/macOS too. The frontend
+needs no npm install or build. Run these commands from the repository root so `.env` and
+`runtime/` keep their existing locations. See [separate frontend/backend development](docs/FRONTEND-BACKEND.md).
+
+Run one backend process, one worker, and one vehicle supervisor. Do not add multiple Uvicorn workers: each would create a separate simulated vehicle. The default command listens only on loopback. Internet access is not needed after installing dependencies.
 
 The **Records** link opens `/admin` for administrator accounts: paginated trip/event
 records, stored-data summaries, user access management and versioned simulation
@@ -70,7 +80,7 @@ All positions, distances and fault inputs in the dashboard are simulated. Speed 
 | Component | Implemented now | Next integration |
 |---|---|---|
 | Dashboard | Route map, trips, status, fault injection, stop/rearm/reset, history | Passenger accounts and real vehicle telemetry |
-| Backend | Validated API, operator token, read-only telemetry WebSocket, SQLite | User roles, deployment authentication, dispatch |
+| Backend | Validated API, accounts/roles, trip ownership, read-only telemetry WebSocket, SQLite | Deployment authentication, dispatch |
 | Brain | Route graph, deterministic simulated motion, stale-input gates and latched faults | Real perception, localization, closed-loop control |
 | ESP32-CAM | AI Thinker camera capture + read-only UART telemetry + stop-request firmware starter | Confirm board, pins, credentials; bench test |
 | Arduino | Uno bench parser; rejects motion, reports sensors unavailable | Confirm board/driver; implement real sensors and motor safety |
@@ -79,20 +89,18 @@ All positions, distances and fault inputs in the dashboard are simulated. Speed 
 ## Project layout
 
 ```text
-taxi/
-  api.py                 REST, WebSocket, application lifecycle
-  supervisor.py          Mission state machine and simulator
-  navigation.py          Stops and shortest permitted routes
-  storage.py             SQLite trips and events
-  static/                Browser dashboard (no Node build needed)
-firmware/
-  esp32_cam/             AI Thinker camera / UART bench starter
-  arduino/               Uno serial bench starter; no actuator pins
-scripts/
-  setup.ps1              Optional Windows installer
-  camera_probe.py        Authenticated JPEG capture test
-tests/                   Supervisor and API tests
-docs/                    Architecture, protocol, hardware and Codex roadmap
+frontend/
+  public/                HTML, CSS and browser JavaScript
+  server.mjs             Local frontend server; forwards /api and /ws
+  tests/                 Frontend/proxy tests
+backend/
+  taxi/                  FastAPI, accounts, supervisor, navigation and SQLite
+  tests/                 Backend API, ownership and simulator tests
+  api.py                 Compatibility ASGI entry point
+pyproject.toml           Python dependencies and backend package configuration
+firmware/                ESP32-CAM and Arduino bench starters
+scripts/                 Setup, camera probe and browser integration checks
+docs/                    Architecture, protocol, hardware and team handoff
 ```
 
 ## Checks
@@ -100,6 +108,11 @@ docs/                    Architecture, protocol, hardware and Codex roadmap
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\ruff.exe check .
+node --check frontend/public/app.js
+node --check frontend/public/admin.js
+node --check frontend/public/account.js
+node --check frontend/public/operator.js
+node --test frontend/tests/server.test.mjs
 ```
 
 ## Clone from GitHub

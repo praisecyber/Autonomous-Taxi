@@ -22,7 +22,7 @@ Tests ran on Python 3.12. GitHub Actions is configured for Python 3.10 and 3.12;
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\ruff.exe check .
-node --check taxi/static/app.js
+node --check frontend/public/app.js
 ```
 
 For board builds, follow HARDWARE.md and record compiler logs and exact board settings. For browser QA, run the demo steps in README.md at desktop and phone widths.

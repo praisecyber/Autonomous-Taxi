@@ -44,7 +44,8 @@ def main():
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))
             port = listener.getsockname()[1]
-        base = f"http://127.0.0.1:{port}"
+        api_base = f"http://127.0.0.1:{port}"
+        frontend = None
         server = subprocess.Popen(
             [
                 sys.executable,
@@ -73,12 +74,37 @@ def main():
                 if server.poll() is not None:
                     raise RuntimeError("Test server exited during startup")
                 try:
-                    urllib.request.urlopen(base + "/api/health", timeout=1)
+                    urllib.request.urlopen(api_base + "/api/health", timeout=1)
                     break
                 except OSError:
                     time.sleep(0.1)
             else:
                 raise RuntimeError("Test server did not become ready")
+            with socket.socket() as listener:
+                listener.bind(("127.0.0.1", 0))
+                frontend_port = listener.getsockname()[1]
+            base = f"http://127.0.0.1:{frontend_port}"
+            frontend = subprocess.Popen(
+                ["node", "frontend/server.mjs"],
+                cwd=root,
+                env={
+                    **os.environ,
+                    "TAXI_FRONTEND_PORT": str(frontend_port),
+                    "TAXI_API_URL": api_base,
+                },
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            for _ in range(100):
+                if frontend.poll() is not None:
+                    raise RuntimeError("Frontend exited during startup")
+                try:
+                    urllib.request.urlopen(base + "/api/health", timeout=1)
+                    break
+                except OSError:
+                    time.sleep(0.1)
+            else:
+                raise RuntimeError("Frontend/API proxy did not become ready")
             with sync_playwright() as p:
                 browser = p.chromium.launch(
                     **({"executable_path": args.chromium} if args.chromium else {}),
@@ -227,12 +253,15 @@ def main():
                 assert not errors, errors
                 browser.close()
                 print(
-                    "Chromium passed: admin login/roles, stored reports, server pagination/search, "
+                    "Chromium passed through separate frontend/API processes: admin login/roles, stored reports, server pagination/search, "
                     "text-safe details, user creation/revocation, passenger booking/cancellation, "
                     "operator session controls, configuration gates/save, logout, network error, "
                     "desktop/mobile layout; no JavaScript errors."
                 )
         finally:
+            if frontend is not None:
+                frontend.terminate()
+                frontend.wait(timeout=10)
             server.terminate()
             server.wait(timeout=10)
 

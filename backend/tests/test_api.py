@@ -12,19 +12,14 @@ def client(monkeypatch):
         yield c
 
 
-def test_dashboard_and_status(client):
-    assert client.get("/").status_code == 200
-    assert client.get("/static/app.js").status_code == 200
+def test_backend_is_api_only(client):
+    for path in ("/", "/operator", "/admin", "/account", "/static/app.js"):
+        assert client.get(path).status_code == 404
     data = client.get("/api/status").json()
     assert data["mode"] == "simulation" and not data["motor_output_enabled"]
 
 
-def test_admin_page_and_protected_records(client):
-    page = client.get("/admin")
-    assert page.status_code == 200
-    assert 'id="admin-trips"' in page.text and 'id="admin-events"' in page.text
-    assert client.get("/static/admin.js").status_code == 200
-    assert client.get("/static/admin.css").status_code == 200
+def test_protected_records(client):
     for path in ("/api/trips", "/api/events"):
         assert client.get(path).status_code == 401
         assert client.get(path, headers={"Authorization": "Bearer wrong-token"}).status_code == 401

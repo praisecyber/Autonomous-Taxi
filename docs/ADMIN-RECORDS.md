@@ -1,5 +1,8 @@
 # Member 3 implementation and validation
 
+The source now uses separate frontend/backend folders. Start both processes as described
+in [the frontend/backend guide](FRONTEND-BACKEND.md); backend-only tests do not serve UI pages.
+
 P3-01 through P3-05 have local implementation and validation. P3-06 has an integration
 contract and runnable integration checks. The technical review incorporated Member 2 main
 at `97aa432`, unified workstream routers and the root application entry point, and verified
@@ -39,9 +42,9 @@ Reproduce:
 ```bash
 .venv/bin/python -m pytest -q
 .venv/bin/ruff check .
-node --check taxi/static/app.js
-node --check taxi/static/admin.js
-node --check taxi/static/account.js
+node --check frontend/public/app.js
+node --check frontend/public/admin.js
+node --check frontend/public/account.js
 .venv/bin/python -m pip check
 ```
 
