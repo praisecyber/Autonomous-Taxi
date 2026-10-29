@@ -18,6 +18,9 @@ vision = ["opencv-python>=4.10,<5", "numpy>=1.26,<3"]
 package-dir = {"" = "backend"}
 py-modules = ["api"]
 
+[tool.setuptools.package-data]
+taxi = ["docs_assets/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
 

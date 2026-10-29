@@ -4,7 +4,8 @@
 
 The source is split into `frontend/` and `backend/`. A Node.js frontend server on loopback
 port 3000 serves `frontend/public` and forwards `/api/*` HTTP requests and `/ws/telemetry`
-upgrades to the FastAPI backend on port 8000. FastAPI serves no HTML or static files.
+upgrades to the FastAPI backend on port 8000. FastAPI serves no product UI pages/assets; its Swagger documentation and bundled
+documentation assets are available at `/docs`.
 The backend package is `backend/taxi`; Python installation/test commands still run from
 the repository root using pyproject.toml. See [startup and API boundary](FRONTEND-BACKEND.md).
 

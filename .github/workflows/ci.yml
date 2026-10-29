@@ -21,5 +21,6 @@ jobs:
       - run: node --check frontend/public/admin.js
       - run: node --check frontend/public/account.js
       - run: node --check frontend/public/operator.js
+      - run: node --check backend/taxi/docs_assets/swagger-init.js
       - run: node --check frontend/server.mjs
       - run: node --test frontend/tests/server.test.mjs

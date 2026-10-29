@@ -21,7 +21,7 @@ In a **second terminal**, from the same repository root, start the frontend:
 node frontend/server.mjs
 ```
 
-Open **http://127.0.0.1:3000**. The operator token is `local-dev-only` unless changed in `.env`. Python 3.11 or 3.12 also works: select the installed version when creating the environment. Activation is unnecessary. API reference: http://127.0.0.1:3000/docs (forwarded to the backend on port 8000).
+Open **http://127.0.0.1:3000**. The operator token is `local-dev-only` unless changed in `.env`. Python 3.11 or 3.12 also works: select the installed version when creating the environment. Activation is unnecessary. Swagger API explorer: **http://127.0.0.1:3000/docs** (also available directly on backend port 8000). The OpenAPI schema is `/openapi.json`. Swagger assets are served locally; no CDN is needed. See [Swagger usage](docs/SWAGGER.md).
 
 Linux / macOS:
 

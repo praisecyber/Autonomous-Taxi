@@ -4,6 +4,7 @@ Install .[dev,browser], install Playwright Chromium or pass --chromium /path/to/
 """
 
 import argparse
+import json
 import os
 import socket
 import subprocess
@@ -236,6 +237,49 @@ def main():
                     page.screenshot(
                         path=str(Path(args.screenshots) / "admin-mobile.png"), full_page=True
                     )
+                # Swagger loads without external services and can execute authenticated mutations.
+                swagger_context = browser.new_context()
+                swagger = swagger_context.new_page()
+                swagger.on("pageerror", lambda error: errors.append(str(error)))
+                swagger.route(
+                    "**/*",
+                    lambda route: (
+                        route.continue_()
+                        if route.request.url.startswith(base + "/")
+                        else route.abort()
+                    ),
+                )
+                swagger.goto(base + "/docs")
+                swagger.wait_for_selector(".swagger-ui .opblock")
+
+                def swagger_post(path, body, expected):
+                    block = swagger.locator(".opblock.opblock-post").filter(
+                        has=swagger.locator(f'.opblock-summary-path[data-path="{path}"]')
+                    )
+                    block.locator(".opblock-summary").click()
+                    block.get_by_role("button", name="Try it out").click()
+                    block.locator("textarea.body-param__text").fill(json.dumps(body))
+                    with swagger.expect_response(
+                        lambda response: (
+                            response.url == base + path and response.request.method == "POST"
+                        )
+                    ) as pending:
+                        block.get_by_role("button", name="Execute", exact=True).click()
+                    result = pending.value
+                    assert result.status == expected, f"Swagger {path}: HTTP {result.status}"
+                    return result
+
+                swagger_post(
+                    "/api/auth/login", {"username": "test-admin", "password": TEST_PASSWORD}, 200
+                )
+                created = swagger_post(
+                    "/api/admin/users",
+                    {"username": "swagger-user", "password": TEST_PASSWORD, "role": "passenger"},
+                    201,
+                )
+                assert created.request.headers.get("x-taxi-csrf")
+                assert created.json()["username"] == "swagger-user"
+                swagger_context.close()
                 page.click("#clear-records")
                 page.wait_for_function(
                     "document.querySelector('#records-feedback').textContent === 'Signed out.'"
@@ -256,7 +300,7 @@ def main():
                     "Chromium passed through separate frontend/API processes: admin login/roles, stored reports, server pagination/search, "
                     "text-safe details, user creation/revocation, passenger booking/cancellation, "
                     "operator session controls, configuration gates/save, logout, network error, "
-                    "desktop/mobile layout; no JavaScript errors."
+                    "desktop/mobile layout, Swagger login and CSRF-protected Try it out; no JavaScript errors."
                 )
         finally:
             if frontend is not None:

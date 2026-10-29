@@ -38,6 +38,6 @@
 <section class="panel history controls"><h2>Backups and restoration</h2><p>Stop the server before administration commands. Backups contain private account and trip data. Keep them outside Git and use a new output path.</p><pre>.venv/bin/python -m taxi.manage backup --source runtime/taxi.sqlite3 --output runtime/backups/taxi-copy.sqlite3
 .venv/bin/python -m taxi.manage restore --source runtime/backups/taxi-copy.sqlite3 --output runtime/restored.sqlite3</pre><p>Restore checks integrity, migrates supported schemas, revokes sessions and interrupts active trips. Verify the restored copy before selecting it as the server database. See docs/ADMIN-ACCOUNTS.md for the full procedure.</p></section>
 </div>
-<footer>Simulation only · Software controls do not establish physical stopping.</footer>
+<footer><a href="/docs" style="color:var(--mint)">Swagger API docs</a> · Simulation only · Software controls do not establish physical stopping.</footer>
 </main><script src="/static/admin.js"></script>
 </body></html>
