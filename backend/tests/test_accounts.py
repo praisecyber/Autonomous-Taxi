@@ -427,7 +427,7 @@ def test_member_workstream_entrypoints_share_permissions_and_supervisor(accounts
     assert c.post("/api/simulation/reset", headers=driver).status_code == 200
     started = c.post("/api/operator/start", headers=driver, json={"destination": "C"})
     assert started.status_code == 201 and app.state.core.trip["id"] == started.json()["id"]
-    assert c.get("/operator").status_code == 200
+    assert c.get("/operator").status_code == 404
 
 
 def test_configuration_cannot_clear_faults_or_change_an_active_route(accounts):

@@ -1,3 +1,4 @@
+from pathlib import Path
 import cv2
 import time
 import torch
@@ -14,7 +15,7 @@ model.eval()
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model.to(device)
 
-ckpt = torch.load("taxi/perception/yolox_tiny.pth", map_location="cpu")
+ckpt = torch.load(Path(__file__).with_name("yolox_tiny.pth"), map_location="cpu")
 model.load_state_dict(ckpt["model"])
 print(f"Model successfully loaded on {device}.")
 

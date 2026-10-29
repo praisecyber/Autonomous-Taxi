@@ -1,3 +1,4 @@
+from pathlib import Path
 import cv2
 import time
 import torch
@@ -96,10 +97,10 @@ if __name__ == "__main__":
     FRAMES = 150
     
     # Test 1: Nano (Smallest, Fastest, Lowest Accuracy)
-    benchmark_model("yolox-nano", "taxi/perception/yolox_nano.pth", FRAMES)
+    benchmark_model("yolox-nano", Path(__file__).with_name("yolox_nano.pth"), FRAMES)
     
     # Test 2: Tiny (Balanced)
-    benchmark_model("yolox-tiny", "taxi/perception/yolox_tiny.pth", FRAMES)
+    benchmark_model("yolox-tiny", Path(__file__).with_name("yolox_tiny.pth"), FRAMES)
     
     # Test 3: S (Standard - Heaviest, Slowest, Highest Accuracy)
-    benchmark_model("yolox-s", "taxi/perception/yolox_s.pth", FRAMES)
+    benchmark_model("yolox-s", Path(__file__).with_name("yolox_s.pth"), FRAMES)

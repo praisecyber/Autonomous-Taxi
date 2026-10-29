@@ -19,7 +19,7 @@ Frontend: HTML/CSS/JavaScript, SVG, Fetch and WebSocket. Backend: Python/FastAPI
 
 Colours: background `#080D0A`, surface `#122019`, primary green `#22C55E`, highlight yellow `#FACC15`, text `#F5F7F5`, muted `#A7B5AC`. Use black text on bright green/yellow and pair status colours with words.
 
-Proposed shared files: `taxi/static/shared.css`, `taxi/static/api-client.js` and shared navigation. These do not exist yet. Member 2 coordinates shared API wiring; Member 3 coordinates auth/schema changes.
+Proposed shared files: `frontend/public/shared.css`, `frontend/public/api-client.js` and shared navigation. These do not exist yet. Member 2 coordinates shared API wiring; Member 3 coordinates auth/schema changes.
 
 ## Roadmap and exit gates
 
@@ -44,7 +44,7 @@ Build the destination and booking screen, cancellation button and trip progress.
 
 **Frontend tools:** HTML, CSS, JavaScript, Fetch API, browser WebSocket and shared design tokens.
 
-**Frontend files:** taxi/static/passenger.html and passenger.js (planned).
+**Frontend files:** frontend/public/passenger.html and passenger.js (planned).
 
 - [ ] **P1-01 Build the booking screen** - Show vehicle current stop, destination selector, trip request, cancellation and active-trip card using shared design tokens.
   - Done when: Screen works at phone and desktop widths, with loading, error and disconnected states.
@@ -65,7 +65,7 @@ Integrate the passenger identity/session supplied by Member 3, apply it to passe
 
 **Backend tools:** Python, FastAPI, Pydantic and pytest; use Member 3's shared authentication and ownership rules.
 
-**Backend / firmware files:** taxi/routers/passenger.py and tests/test_passenger.py (planned); reuse existing trip APIs.
+**Backend / firmware files:** backend/taxi/routers/passenger.py and backend/tests/test_passenger.py (planned); reuse existing trip APIs.
 
 Backend integration, verification and handoff checklist:
 
@@ -92,7 +92,7 @@ Build the operator's route map, active-trip panel, speed/state/fault displays an
 
 **Frontend tools:** HTML, CSS, JavaScript, SVG, Fetch API, browser WebSocket and shared design tokens.
 
-**Frontend files:** taxi/static/operator.html and operator.js (planned); extract the current dashboard.
+**Frontend files:** frontend/public/operator.html and operator.js (planned); extract the current dashboard.
 
 - [ ] **P2-01 Split the operator dashboard** - Move existing map, current mission, state, speed, stop/rearm and simulator controls into its own screen without breaking the demo.
   - Done when: Operator screen preserves the working A-to-B simulation.
@@ -104,7 +104,7 @@ Maintain the mission state machine and route planning; coordinate API modules an
 
 **Backend tools:** Python 3.10+, FastAPI, Pydantic, asyncio, route graph, supervisor, pytest, Ruff and GitHub Actions.
 
-**Backend / firmware files:** taxi/supervisor.py, navigation.py and api.py (existing); taxi/routers/operator.py (planned).
+**Backend / firmware files:** backend/taxi/supervisor.py, navigation.py and api.py (existing); backend/taxi/routers/operator.py (planned).
 
 Backend integration, verification and handoff checklist:
 
@@ -145,7 +145,7 @@ Build the trip history, event logs, search/filter and detail views. Add user, st
 
 **Frontend tools:** HTML, CSS, JavaScript, Fetch API, shared tables/forms and design tokens.
 
-**Frontend files:** taxi/static/admin.html and admin.js (planned).
+**Frontend files:** frontend/public/admin.html and admin.js (planned).
 
 - [ ] **P3-01 Build trip and event views** - Show stored trips and events, detail rows and filters. Start from existing recent-record endpoints.
   - Done when: View shows real stored statuses; no invented counts or hard-coded business metrics.
@@ -157,7 +157,7 @@ Build shared accounts, sessions and passenger/operator/admin permissions. Enforc
 
 **Backend tools:** Python, FastAPI, SQLite/SQL, Pydantic, pytest, Ruff and a reviewed password/session library selected before account implementation.
 
-**Backend / firmware files:** taxi/storage.py (existing); taxi/routers/admin.py, taxi/auth.py and migration/access-control tests (planned).
+**Backend / firmware files:** backend/taxi/storage.py (existing); backend/taxi/routers/admin.py, backend/taxi/auth.py and migration/access-control tests (planned).
 
 Backend integration, verification and handoff checklist:
 
@@ -193,7 +193,7 @@ Build the camera, sensor, board connection and fault panels. Show data source, m
 
 **Frontend tools:** HTML, CSS, JavaScript, camera/status panels, Fetch API, browser WebSocket and shared design tokens.
 
-**Frontend files:** taxi/static/diagnostics.html and diagnostics.js (planned).
+**Frontend files:** frontend/public/diagnostics.html and diagnostics.js (planned).
 
 - [ ] **P4-01 Build diagnostics with honest source labels** - Display simulation/device source, sensor age, validity, camera state, connection and stop reasons; missing hardware is unavailable.
   - Done when: No absent sensor is shown as a fabricated healthy value.
@@ -205,7 +205,7 @@ Confirm hardware and wiring, compile and bench-test boards, read actual sensors 
 
 **Backend tools:** Python telemetry parser/adapter, Arduino C/C++, PlatformIO or Arduino IDE, esp_camera, local HTTP, UART and optional PySerial for direct USB bench tests.
 
-**Backend / firmware files:** firmware/esp32_cam/, firmware/arduino/ and scripts/camera_probe.py (existing starters); taxi/communication/ and parser/timeout tests (planned).
+**Backend / firmware files:** firmware/esp32_cam/, firmware/arduino/ and scripts/camera_probe.py (existing starters); backend/taxi/communication/ and parser/timeout tests (planned).
 
 Backend integration, verification and handoff checklist:
 
