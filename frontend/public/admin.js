@@ -88,7 +88,7 @@ async function loadUsers() {
   for (const user of data.items) {
     const row = document.createElement('tr'); textCell(row, user.username);
     const role = document.createElement('select'); role.setAttribute('aria-label', `Role for ${user.username}`);
-    for (const value of ['passenger','operator','admin']) role.add(new Option(value, value)); role.value = user.role;
+    for (const value of ['passenger','operator','admin','diagnostics']) role.add(new Option(value, value)); role.value = user.role;
     textCell(row, '').append(role);
     const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = !!user.enabled;
     enabled.setAttribute('aria-label', `Enabled account ${user.username}`); textCell(row, '').append(enabled);
@@ -134,6 +134,7 @@ async function run(fn,feedback='records-feedback',button=null) {
   }finally{if(button){button.disabled=!currentUser && button.id==='load-records';button.removeAttribute('aria-busy');}}
 }
 async function enterSession(data) {
+  if(data.user.must_change_password){hideSession('Change your temporary password through Account before administering the service.');return;}
   if (data.user.role !== 'admin') { hideSession('This account does not have administrator permissions.'); return; }
   csrf = data.csrf_token; currentUser = data.user;
   $('identity').textContent = `Signed in as ${data.user.username} · administrator`;
@@ -167,7 +168,7 @@ $('new-user-form').onsubmit = event => {
   event.preventDefault(); const button = event.submitter;
   run(async () => {
     const password = $('new-password').value; $('new-password').value = '';
-    await api('/api/admin/users','POST',{username:$('new-username').value,password,role:$('new-role').value});
+    await api('/api/admin/users','POST',{username:$('new-username').value,password,role:$('new-role').value,require_password_change:$('new-force-password').checked});
     $('new-user-form').reset(); $('users-feedback').textContent = 'Account created.'; offsets.users = 0; await loadUsers();
   }, 'users-feedback', button);
 };

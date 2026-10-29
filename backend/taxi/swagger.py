@@ -14,7 +14,7 @@ browser keeps the HttpOnly session cookie; this Swagger page adds the CSRF heade
 session mutations automatically. You can also sign in through `/account` or `/admin`.
 
 **Permissions:** passengers request/read/cancel their own trips; operators control the
-simulator and read records; administrators manage accounts, reports and configuration.
+simulator and read records; administrators manage accounts, reports and configuration. Diagnostics accounts have read-only diagnostic access. Generated credentials must be changed via /api/auth/password before role-protected requests.
 Administrators do not inherit operator command authority. Configuration saves require
 READY at A with no trip and the current configuration version.
 

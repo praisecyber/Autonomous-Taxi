@@ -20,8 +20,9 @@ async function action(fn,button){
 async function signedIn(data){
   user=data.user;csrf=data.csrf_token;$('login-form').hidden=true;$('logout').hidden=false;$('password-panel').hidden=false;
   Taxi.text('account-identity',`${user.username} · ${user.role}`);Taxi.connection('connection','live','● Session verified');
-  const destination={passenger:'/passenger',operator:'/operator',admin:'/admin'}[user.role];
-  $('account-next').href=destination;$('account-next').textContent={passenger:'Choose your destination →',operator:'Open mission control →',admin:'Open administration →'}[user.role];$('account-next').hidden=false;
+  if(user.must_change_password){$('account-next').hidden=true;$('passenger-panel').hidden=true;Taxi.message('feedback','Change your temporary password below before using the service.');return;}
+  const destination={passenger:'/passenger',operator:'/operator',admin:'/admin',diagnostics:'/diagnostics'}[user.role];
+  $('account-next').href=destination;$('account-next').textContent={passenger:'Choose your destination →',operator:'Open mission control →',admin:'Open administration →',diagnostics:'Open diagnostics →'}[user.role];$('account-next').hidden=false;
   Taxi.message('feedback','Your permissions are enforced by the backend. Use your workspace to continue.');
   $('passenger-panel').hidden=user.role!=='passenger';
   const next=new URLSearchParams(location.search).get('next');if(next===destination)location.assign(next);

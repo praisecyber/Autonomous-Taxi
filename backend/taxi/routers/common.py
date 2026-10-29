@@ -15,7 +15,11 @@ def visible_snapshot(app, user):
     result = app.state.core.snapshot()
     if result["trip"]:
         trip = result["trip"]
-        if not user or (user["role"] == "passenger" and trip.get("owner_id") != user["id"]):
+        if (
+            not user
+            or user["role"] == "diagnostics"
+            or (user["role"] == "passenger" and trip.get("owner_id") != user["id"])
+        ):
             result["trip"] = None
         else:
             trip.pop("owner_id", None)

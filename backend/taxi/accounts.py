@@ -2,6 +2,7 @@
 
 import json
 import sqlite3
+import secrets
 import uuid
 from typing import Literal
 
@@ -25,12 +26,13 @@ class NewUser(BaseModel):
     model_config = ConfigDict(extra="forbid")
     username: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{2,63}$")
     password: str = Field(min_length=12, max_length=128)
-    role: Literal["passenger", "operator", "admin"]
+    role: Literal["passenger", "operator", "admin", "diagnostics"]
+    require_password_change: bool = False
 
 
 class UserAccess(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    role: Literal["passenger", "operator", "admin"]
+    role: Literal["passenger", "operator", "admin", "diagnostics"]
     enabled: bool
 
 
@@ -89,8 +91,15 @@ async def create_user(body: NewUser, request: Request):
     try:
         with store.db:
             store.db.execute(
-                "INSERT INTO users(id,username,password_hash,role,created_at) VALUES(?,?,?,?,?)",
-                (user_id, body.username.casefold(), encoded, body.role, utc_now()),
+                "INSERT INTO users(id,username,password_hash,role,created_at,must_change_password) VALUES(?,?,?,?,?,?)",
+                (
+                    user_id,
+                    body.username.casefold(),
+                    encoded,
+                    body.role,
+                    utc_now(),
+                    int(body.require_password_change),
+                ),
             )
     except sqlite3.IntegrityError as exc:
         raise HTTPException(409, "Username already exists") from exc
@@ -230,6 +239,8 @@ async def change_password(body: PasswordChange, request: Request, response: Resp
     user = request.app.state.auth.identity(request)
     if user["id"] is None:
         raise HTTPException(403, "An account session is required")
+    if secrets.compare_digest(body.current_password.encode(), body.new_password.encode()):
+        raise HTTPException(422, "Choose a new password different from the current password")
     db = request.app.state.store.db
     row = db.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
     if not await run_in_threadpool(PASSWORDS.verify, body.current_password, row["password_hash"]):
@@ -238,7 +249,7 @@ async def change_password(body: PasswordChange, request: Request, response: Resp
     request.app.state.auth.identity(request)
     with db:
         changed = db.execute(
-            "UPDATE users SET password_hash=? WHERE id=? AND password_hash=?",
+            "UPDATE users SET password_hash=?,must_change_password=0 WHERE id=? AND password_hash=?",
             (encoded, user["id"], row["password_hash"]),
         )
         if changed.rowcount != 1:

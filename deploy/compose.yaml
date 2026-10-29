@@ -1,0 +1,66 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: probix-taxi-backend:local
+    container_name: probix-taxi-backend
+    command: ["python", "-m", "uvicorn", "taxi.api:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--proxy-headers", "--forwarded-allow-ips", "${TAXI_PROXY_IP:-172.29.40.2}"]
+    environment:
+      TAXI_DEPLOYMENT: production
+      TAXI_MODE: simulation
+      TAXI_DATA_DIR: /data
+      TAXI_ALLOWED_HOSTS: ${TAXI_DOMAIN:?Set TAXI_DOMAIN to a hostname you control}
+      TAXI_SECURE_COOKIES: "1"
+      TAXI_ALLOW_LEGACY_TOKEN: "0"
+    volumes:
+      - taxi_data:/data
+    networks:
+      private:
+        ipv4_address: ${TAXI_BACKEND_IP:-172.29.40.3}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,urllib.request; r=urllib.request.Request('http://127.0.0.1:8000/api/health',headers={'Host':os.environ['TAXI_ALLOWED_HOSTS']}); assert urllib.request.urlopen(r).status==200"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.caddy
+    image: probix-taxi-web:local
+    environment:
+      TAXI_DOMAIN: ${TAXI_DOMAIN:?Set TAXI_DOMAIN}
+      TAXI_API_UPSTREAM: backend:8000
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      private:
+        ipv4_address: ${TAXI_PROXY_IP:-172.29.40.2}
+      edge: {}
+    depends_on:
+      backend:
+        condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+networks:
+  private:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${TAXI_SUBNET:-172.29.40.0/24}
+  edge: {}
+volumes:
+  taxi_data: {}
+  caddy_data: {}
+  caddy_config: {}

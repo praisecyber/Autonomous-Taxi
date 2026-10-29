@@ -7,7 +7,7 @@ v0.1 implements a simulation, backend, dashboard and bench-only firmware starter
 
 ## Work rules
 - Frontend pages/assets live in frontend/public; backend Python code is backend/taxi and backend tests are backend/tests.
-- Run both processes from the repository root: `python -m taxi` and `node frontend/server.mjs`. The frontend proxies /api and /ws; do not add a second supervisor or permissive CORS to connect them.
+- For the provisioned real local database, use `deploy/start-local-https.sh`; read deploy/README.md. Do not start a second backend against that database. For isolated development databases, run both processes from the repository root: `python -m taxi` and `node frontend/server.mjs`. The frontend proxies /api and /ws; do not add a second supervisor or permissive CORS to connect them.
 - Run `python -m pytest -q` and `ruff check .` after Python changes.
 - Run `node --check frontend/public/app.js` after browser JS changes.
 - Keep dependencies in pyproject.toml. Keep package discovery limited to taxi.

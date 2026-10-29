@@ -144,3 +144,7 @@ Follow the Windows or Linux setup above, then continue work with Codex. Commit a
 Read `AGENTS.md` and `docs/ROADMAP.md`. First run the tests, then tackle one milestone at a time. Hardware motion stays unavailable until the exact board, driver, steering method, feedback sensors and emergency-stop wiring are confirmed. Do not replace missing sensors with invented healthy readings.
 
 This repository does not declare a redistribution licence for your original application code; choose one before publishing it for third-party reuse. Dependencies and any future model weights retain their own licences. No pretrained AI weights are included.
+
+## Provisioned accounts and HTTPS
+
+For the PROBIX accounts and secure local/public deployment profiles, see [deploy/README.md](deploy/README.md) and [operational drill evidence](docs/PROBIX-OPERATIONS.md). Use the HTTPS launcher for the provisioned runtime database.

@@ -199,6 +199,7 @@ def main():
                     ("test-driver", "operator"),
                     ("ui-rider", "passenger"),
                 ]:
+                    page.uncheck("#new-force-password")
                     page.fill("#new-username", name)
                     page.fill("#new-password", TEST_PASSWORD)
                     page.select_option("#new-role", role)

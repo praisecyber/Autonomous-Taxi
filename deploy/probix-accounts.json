@@ -1,0 +1,7 @@
+[
+  {"username":"probix","role":"admin"},
+  {"username":"probix.member1","role":"passenger"},
+  {"username":"probix.member2","role":"operator"},
+  {"username":"probix.member3","role":"admin"},
+  {"username":"probix.member4","role":"diagnostics"}
+]
