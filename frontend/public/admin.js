@@ -19,6 +19,7 @@ function details(row, record) {
   box.append(title, pre); td.append(box);
 }
 function hideSession(message) {
+  Taxi.connection('connection','disconnected','○ Administrator sign-in required');
   ++epoch; csrf = ''; currentUser = null; $('admin-content').hidden = true;
   $('access-form').hidden = false; $('load-records').disabled = true; $('clear-records').disabled = true;
   $('identity').textContent = 'Administrator sign-in required.'; $('records-feedback').textContent = message;
@@ -26,22 +27,16 @@ function hideSession(message) {
   $('configuration').value = ''; $('new-password').value = ''; $('new-username').value = '';
   for (const key of Object.keys(offsets)) { offsets[key] = 0; totals[key] = 0; }
 }
-async function api(path, method = 'GET', body) {
-  const version = epoch;
-  let response;
+async function api(path, method='GET', body) {
+  const generation=epoch;
   try {
-    response = await fetch(path, {method, credentials: 'same-origin', cache: 'no-store',
-      headers: {'Content-Type':'application/json', 'X-Taxi-CSRF':csrf},
-      ...(body === undefined ? {} : {body:JSON.stringify(body)})});
-  } catch { throw new Error('Server unavailable. Retry when connected.'); }
-  if (version !== epoch) throw new Error('Session changed; retry after signing in.');
-  const data = response.status === 204 ? null : await response.json();
-  if (version !== epoch) throw new Error('Session changed; retry after signing in.');
-  if (!response.ok) {
-    if ((response.status === 401 || response.status === 403) && currentUser) hideSession('Session expired or access denied. Sign in again.');
-    throw new Error(typeof data?.detail === 'string' ? data.detail : `Request rejected (HTTP ${response.status}). Check the supplied fields.`);
+    const data=await TaxiApi.request(path,{method,body,csrf});
+    if(generation!==epoch)throw new Error('Session changed; retry after signing in.');
+    return data;
+  } catch(error) {
+    if([401,403].includes(error.status) && currentUser)hideSession('Session expired or access denied. Sign in again.');
+    throw error;
   }
-  return data;
 }
 function options(id, values, label) {
   const select = $(id), previous = select.value;
@@ -63,7 +58,7 @@ async function loadRecords(kind) {
     body.replaceChildren(); totals[kind] = data.total;
     for (const record of data.items) {
       const row = document.createElement('tr'); textCell(row, record.id);
-      if (kind === 'trips') { textCell(row, `${record.origin} → ${record.destination}`); textCell(row, record.status); }
+      if (kind === 'trips') { textCell(row, `${record.origin} → ${record.destination}`); textCell(row, '').append(Taxi.badge(record.status)); }
       else textCell(row, record.kind);
       textCell(row, new Date(record.created_at || record.at).toLocaleString());
       details(row, record); body.append(row);
@@ -108,18 +103,35 @@ async function loadUsers() {
   $('users-count').textContent = `${data.items.length} shown · ${data.total} accounts · offset ${data.offset}`;
   pager('users','users');
 }
-async function loadConfiguration() { $('configuration').value = JSON.stringify(await api('/api/admin/configuration'), null, 2); }
+function showConfiguration(data) {
+  $('configuration').value=JSON.stringify(data,null,2);Taxi.text('configuration-version',`Version ${data.version}`);
+  $('stop-labels').replaceChildren();
+  for(const [id,name] of Object.entries(data.stops)) {
+    const box=document.createElement('div'),label=document.createElement('label'),input=document.createElement('input');
+    input.id=`stop-name-${id}`;input.name=`stop-${id}`;input.value=name;input.required=true;input.maxLength=80;label.htmlFor=input.id;label.textContent=`${id} · Stop name`;
+    input.oninput=()=>{try{const config=JSON.parse($('configuration').value);config.stops[id]=input.value;$('configuration').value=JSON.stringify(config,null,2);}catch{Taxi.message('configuration-feedback','Reload configuration before editing stop names.',true);}};
+    box.append(label,input);$('stop-labels').append(box);
+  }
+  const seen=new Set(), roads=[];for(const [from,nodes] of Object.entries(data.edges))for(const to of nodes){const key=[from,to].sort().join(' ↔ ');if(!seen.has(key)){seen.add(key);roads.push(key);}}
+  Taxi.text('route-summary',`Mapped road segments: ${roads.join(' · ')}. Geometry remains fixed.`);
+}
+async function loadConfiguration(){showConfiguration(await api('/api/admin/configuration'));}
 async function refresh() {
   $('records-feedback').textContent = 'Refreshing snapshots…';
   for (const id of ['admin-trips','admin-events','users','reports']) $(id).replaceChildren();
   // Sequential loads make session failures unambiguous and avoid stale partial responses.
   await loadReports(); await loadRecords('trips'); await loadRecords('events'); await loadUsers(); await loadConfiguration();
-  $('records-feedback').textContent = `Snapshot refreshed at ${new Date().toLocaleTimeString()}.`;
+  Taxi.message('records-feedback',`Snapshot refreshed at ${new Date().toLocaleTimeString()}.`);
+  Taxi.text('admin-freshness',`Stored snapshot refreshed at ${new Date().toLocaleTimeString()}. Records are not live telemetry.`);
+  Taxi.connection('connection','live','✓ Stored snapshot refreshed');
 }
-async function run(fn, feedback='records-feedback', button=null) {
-  if (button) button.disabled = true;
-  try { await fn(); } catch (error) { $(feedback).textContent = error.message; }
-  finally { if (button) button.disabled = !currentUser && button.id === 'load-records'; }
+async function run(fn,feedback='records-feedback',button=null) {
+  if(button){button.disabled=true;button.setAttribute('aria-busy','true');}
+  Taxi.message(feedback,'Working…');
+  try{await fn();}catch(error){
+    TaxiApi.showError(error,feedback,button?.form);
+    if(error instanceof TaxiApi.ApiError && !error.status){Taxi.connection('connection','disconnected');Taxi.text('admin-freshness','Disconnected · Stored records are not current. Refresh before relying on this snapshot.');}
+  }finally{if(button){button.disabled=!currentUser && button.id==='load-records';button.removeAttribute('aria-busy');}}
 }
 async function enterSession(data) {
   if (data.user.role !== 'admin') { hideSession('This account does not have administrator permissions.'); return; }
@@ -142,7 +154,7 @@ for (const [kind,prefix] of [['trips','trip'],['events','event']]) {
   $(prefix+'-filter').onsubmit = event => {
     event.preventDefault(); offsets[kind] = 0;
     filters[kind] = kind === 'trips' ? {q:$('trip-search').value,status:$('trip-status').value} : {q:$('event-search').value,event_kind:$('event-kind').value};
-    run(() => loadRecords(kind));
+    run(() => loadRecords(kind),'records-feedback',event.submitter);
   };
 }
 for (const [kind,prefix] of [['trips','trip'],['events','event'],['users','users']]) {
@@ -164,9 +176,9 @@ $('configuration-form').onsubmit = event => {
     let configuration;
     try { configuration = JSON.parse($('configuration').value); } catch { throw new Error('Enter valid JSON.'); }
     const saved = await api('/api/admin/configuration','PUT',configuration);
-    $('configuration').value = JSON.stringify(saved,null,2);
+    showConfiguration(saved);
     $('configuration-feedback').textContent = `Saved version ${saved.version}. Operators should reload their stop lists.`;
   },'configuration-feedback',event.submitter);
 };
 $('reload-configuration').onclick = () => run(loadConfiguration,'configuration-feedback');
-run(async () => { try { await enterSession(await api('/api/auth/me')); } catch { hideSession('Sign in to load records.'); } });
+(async()=>{try{await enterSession(await api('/api/auth/me'));}catch(error){hideSession(error.status===401?'Sign in to load records.':error.message);if(error.status!==401)Taxi.message('records-feedback',error.message,true);}})();

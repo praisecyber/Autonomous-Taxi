@@ -63,6 +63,18 @@ only. This remains a single-process simulation, not a production deployment.
 See [accounts, roles, migrations and backup/restore](docs/ADMIN-ACCOUNTS.md) and the
 [Member 3 validation record](docs/ADMIN-RECORDS.md).
 
+## Interfaces and project theme
+
+The frontend now includes **Passenger** (`/passenger`), **Operator** (`/operator`),
+**Admin** (`/admin`) and **Diagnostics** (`/diagnostics`), plus shared account access
+at `/account`. All use the green/yellow/black palette and `frontend/public/shared.css`.
+Choose a destination on Passenger, supervise missions on Operator, manage authorized
+records/configuration on Admin, and inspect simulated validity/missing hardware on Diagnostics.
+
+Stale or disconnected telemetry is explicitly labelled, and current measurements/progress
+become unavailable. Stop is a prominent software-only action, including on phones.
+See [frontend validation and accessibility review](docs/FRONTEND-REVIEW.md).
+
 ## Try the full demo
 
 1. Start at **A — Engineering**, select **B — Library**, and start the simulated trip.

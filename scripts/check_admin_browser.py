@@ -25,6 +25,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--chromium")
     parser.add_argument("--screenshots", help="Optional output directory, outside source control")
+    parser.add_argument("--axe", help="Optional path to axe.min.js for accessibility audits")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     with tempfile.TemporaryDirectory(prefix="taxi-accounts-") as temporary:
@@ -113,6 +114,51 @@ def main():
                     args=["--no-sandbox"],
                 )
                 errors = []
+
+                def review_interface(target, name):
+                    for width in (1440, 768, 390, 360):
+                        target.set_viewport_size(
+                            {"width": width, "height": 1000 if width > 768 else 844}
+                        )
+                        assert target.evaluate(
+                            "document.documentElement.scrollWidth <= innerWidth"
+                        ), (name, width)
+                        palette = target.evaluate("""() => {
+                            const css=getComputedStyle(document.documentElement);
+                            return ['--bg','--surface','--primary','--highlight','--text','--muted'].map(k=>css.getPropertyValue(k).trim().toUpperCase());
+                        }""")
+                        assert palette == [
+                            "#080D0A",
+                            "#122019",
+                            "#22C55E",
+                            "#FACC15",
+                            "#F5F7F5",
+                            "#A7B5AC",
+                        ]
+                        target.evaluate("document.activeElement?.blur();scrollTo(0,0)")
+                        if args.screenshots and width in (1440, 390):
+                            output = Path(args.screenshots)
+                            output.mkdir(parents=True, exist_ok=True)
+                            target.screenshot(
+                                path=str(output / f"{name}-{width}.png"), full_page=True
+                            )
+                            target.screenshot(path=str(output / f"{name}-{width}-viewport.png"))
+                        if args.axe and width in (1440, 390):
+                            target.add_script_tag(path=args.axe)
+                            violations = target.evaluate("""async () => (await axe.run(document, {
+                                runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}
+                            })).violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))""")
+                            assert not violations, (name, width, violations)
+                    target.set_viewport_size({"width": 1440, "height": 1000})
+                    target.evaluate("scrollTo(0,0)")
+                    target.keyboard.press("Tab")
+                    target.locator(".skip-link").focus()
+                    assert target.locator(".skip-link").evaluate(
+                        "el => getComputedStyle(el).outlineStyle !== 'none'"
+                    )
+                    target.keyboard.press("Enter")
+                    assert target.locator("#main").evaluate("el => document.activeElement === el")
+
                 admin_context = browser.new_context(viewport={"width": 1440, "height": 1000})
                 page = admin_context.new_page()
                 page.on("pageerror", lambda error: errors.append(str(error)))
@@ -148,7 +194,11 @@ def main():
                 page.locator("#admin-events summary").click()
                 assert "<img" in page.locator("#admin-events pre").inner_text()
                 assert not page.evaluate("Boolean(window.injected)")
-                for name, role in [("test-rider", "passenger"), ("test-driver", "operator")]:
+                for name, role in [
+                    ("test-rider", "passenger"),
+                    ("test-driver", "operator"),
+                    ("ui-rider", "passenger"),
+                ]:
                     page.fill("#new-username", name)
                     page.fill("#new-password", TEST_PASSWORD)
                     page.select_option("#new-role", role)
@@ -164,14 +214,16 @@ def main():
                 rider.fill("#login-password", TEST_PASSWORD)
                 rider.locator("#login-form button").click()
                 rider.wait_for_selector("#passenger-panel", state="visible")
-                rider.select_option("#destination", "B")
-                rider.locator("#booking-form button").click()
-                rider.wait_for_selector("#my-trips button")
-                assert "ACTIVE" in rider.locator("#my-trips").inner_text()
-                rider.locator("#my-trips button").click()
+                rider.goto(base + "/passenger")
+                rider.check('input[name="destination"][value="B"]')
+                rider.click("#book-trip")
+                rider.wait_for_selector("#cancel-trip", state="visible")
+                assert "Active" in rider.locator("#trip-badge").inner_text()
+                rider.click("#cancel-trip")
                 rider.wait_for_function(
-                    "document.querySelector('#my-trips').textContent.includes('CANCELLED')"
+                    "document.querySelector('#trip-badge').textContent.includes('CANCELLED')"
                 )
+                review_interface(rider, "passenger")
                 # Admin management/configuration UI uses an explicit version and safe reset gate.
                 page.click("#reload-configuration")
                 page.wait_for_function(
@@ -194,7 +246,9 @@ def main():
                 driver.goto(base + "/operator")
                 driver.wait_for_function("document.querySelector('#token').value === ''")
                 driver.click("#reset")
-                driver.wait_for_function("document.querySelector('#state').textContent === 'READY'")
+                driver.wait_for_function(
+                    "document.querySelector('#state').dataset.code === 'READY'"
+                )
                 page.locator("#configuration").evaluate(
                     "el => { const c=JSON.parse(el.value); c.stops.B='Renamed Library'; el.value=JSON.stringify(c); }"
                 )
@@ -214,8 +268,11 @@ def main():
                 page.wait_for_function(
                     "document.querySelector('#users-feedback').textContent.includes('sessions revoked')"
                 )
-                rider.click("#refresh-trips")
-                rider.wait_for_selector("#login-form", state="visible")
+                rider.click("#refresh-passenger")
+                rider.wait_for_function(
+                    "document.querySelector('#passenger-access').textContent.includes('session expired')"
+                )
+                assert rider.locator("#book-trip").is_disabled()
                 # Role boundaries apply even when a non-admin opens the admin shell.
                 driver.goto(base + "/admin")
                 driver.wait_for_function(
@@ -227,16 +284,169 @@ def main():
                 page.wait_for_function(
                     "document.querySelector('#trip-count').textContent.includes('31 matching')"
                 )
-                if args.screenshots:
-                    output = Path(args.screenshots)
-                    output.mkdir(parents=True, exist_ok=True)
-                    page.screenshot(path=str(output / "admin-desktop.png"), full_page=True)
-                page.set_viewport_size({"width": 390, "height": 844})
-                assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
-                if args.screenshots:
-                    page.screenshot(
-                        path=str(Path(args.screenshots) / "admin-mobile.png"), full_page=True
+                # A second passenger completes a real simulated trip; progress belongs to that ID.
+                ui_context = browser.new_context()
+                ui_rider = ui_context.new_page()
+                ui_rider.on("pageerror", lambda error: errors.append(str(error)))
+                ui_rider.goto(base + "/account")
+                ui_rider.fill("#login-username", "ui-rider")
+                ui_rider.fill("#login-password", TEST_PASSWORD)
+                ui_rider.locator("#login-form button").click()
+                ui_rider.wait_for_selector("#account-next", state="visible")
+                review_interface(ui_rider, "account")
+                ui_rider.goto(base + "/passenger")
+                ui_rider.check('input[name="destination"][value="B"]')
+                ui_rider.click("#book-trip")
+                ui_rider.wait_for_selector("#cancel-trip", state="visible")
+                ui_rider.wait_for_function(
+                    "document.querySelector('#trip-progress').value === 100", timeout=25000
+                )
+                assert "Arrival confirmed" in ui_rider.locator("#progress-copy").inner_text()
+                assert "COMPLETED" in ui_rider.locator("#trip-badge").inner_text()
+                assert ui_rider.locator("#cancel-trip").is_hidden()
+                review_interface(ui_rider, "passenger-arrived")
+                # Passenger credentials never enable the operator UI.
+                ui_rider.goto(base + "/operator")
+                ui_rider.wait_for_function(
+                    "document.querySelector('#access-note').textContent.includes('passenger account')"
+                )
+                assert ui_rider.locator("#start").is_disabled()
+                assert ui_rider.locator("#stop").is_disabled()
+                # Capture a real fault, then withhold WebSocket messages to prove stale/disconnect behavior.
+                transport = {"freeze": False, "client": None}
+
+                def bridge(client):
+                    transport["client"] = client
+                    upstream = client.connect_to_server()
+                    upstream.on_message(
+                        lambda message: None if transport["freeze"] else client.send(message)
                     )
+
+                driver.route_web_socket("**/ws/telemetry", bridge)
+                driver.goto(base + "/operator")
+                driver.click("#reset")
+                driver.select_option("#destination", "B")
+                driver.click("#start")
+                driver.wait_for_function(
+                    "document.querySelector('#state').dataset.code === 'ACTIVE'"
+                )
+                driver.check("#obstacle")
+                driver.wait_for_function(
+                    "document.querySelector('#state').dataset.code === 'FAULT'"
+                )
+                driver.uncheck("#obstacle")
+                driver.wait_for_function("!document.querySelector('#rearm').disabled")
+                review_interface(driver, "operator-fault")
+                transport["freeze"] = True
+                driver.wait_for_function(
+                    "document.querySelector('#connection').textContent.includes('Stale')"
+                )
+                for control in (
+                    "#start",
+                    "#rearm",
+                    "#reset",
+                    "#obstacle",
+                    "#sensor_failed",
+                    "#link_failed",
+                ):
+                    assert driver.locator(control).is_disabled(), control
+                assert not driver.locator("#stop").is_disabled()
+                assert driver.locator("#speed").inner_text() == "Unavailable"
+                assert driver.locator("#route-map").get_attribute("data-stale") == "true"
+                review_interface(driver, "operator-stale")
+                transport["client"].send("not valid telemetry")
+                driver.wait_for_function(
+                    "document.querySelector('#connection').textContent.includes('Invalid')"
+                )
+                assert driver.locator("#start").is_disabled()
+                transport["client"].close(code=1000)
+                driver.wait_for_function(
+                    "document.querySelector('#state').dataset.code === 'DISCONNECTED'"
+                )
+                assert driver.locator("#start").is_disabled()
+                transport["freeze"] = False
+                driver.wait_for_function(
+                    "document.querySelector('#state').dataset.code === 'FAULT'"
+                )
+                assert driver.locator("#start").is_disabled()  # Reconnect did not rearm the fault.
+                diagnostic = browser.new_page()
+                diagnostic.on("pageerror", lambda error: errors.append(str(error)))
+                diagnostic.goto(base + "/diagnostics")
+                diagnostic.wait_for_function(
+                    "document.querySelector('#diagnostic-source').textContent === 'Simulated'"
+                )
+                assert "Unavailable" in diagnostic.locator(".diagnostic-list").last.inner_text()
+                assert "Fault" in diagnostic.locator("#diag-vehicle").inner_text()
+                review_interface(diagnostic, "diagnostics")
+                driver.check("#sensor_failed")
+                diagnostic.wait_for_function(
+                    "document.querySelector('#sensor-validity').textContent.includes('Invalid')"
+                )
+                assert "Unavailable" in diagnostic.locator(".diagnostic-list").last.inner_text()
+                driver.uncheck("#sensor_failed")
+                driver.click("#reset")
+                driver.wait_for_function(
+                    "document.querySelector('#state').dataset.code === 'READY'"
+                )
+                review_interface(driver, "operator-ready")
+                driver.set_viewport_size({"width": 390, "height": 844})
+                driver.select_option("#destination", "B")
+                driver.click("#start")
+                driver.wait_for_function(
+                    "document.querySelector('#state').dataset.code === 'ACTIVE'"
+                )
+                driver.click("#stop-phone")
+                driver.wait_for_function(
+                    "document.querySelector('#state').dataset.code === 'STOPPED'"
+                )
+                assert driver.locator("#stop").is_hidden()
+                assert driver.locator("#stop-phone").is_visible()
+                driver.click("#reset")
+                driver.wait_for_function(
+                    "document.querySelector('#state').dataset.code === 'READY'"
+                )
+                # Passenger progress and booking become unavailable when messages stop arriving.
+                passenger_transport = {"freeze": False, "client": None}
+
+                def passenger_bridge(client):
+                    passenger_transport["client"] = client
+                    upstream = client.connect_to_server()
+                    upstream.on_message(
+                        lambda message: (
+                            None if passenger_transport["freeze"] else client.send(message)
+                        )
+                    )
+
+                ui_rider.route_web_socket("**/ws/telemetry", passenger_bridge)
+                ui_rider.goto(base + "/passenger")
+                ui_rider.wait_for_function("!document.querySelector('#book-trip').disabled")
+                passenger_transport["freeze"] = True
+                ui_rider.wait_for_function(
+                    "document.querySelector('#connection').textContent.includes('Stale')"
+                )
+                assert ui_rider.locator("#book-trip").is_disabled()
+                assert ui_rider.locator("#passenger-speed").inner_text() == "Unavailable"
+                assert ui_rider.locator("#trip-progress").evaluate("el => el.value") == 0
+                review_interface(ui_rider, "passenger-stale")
+                passenger_transport["client"].close(code=1000)
+                ui_rider.wait_for_function(
+                    "document.querySelector('#connection').textContent.includes('Disconnected')"
+                )
+                passenger_transport["freeze"] = False
+                ui_rider.wait_for_function("!document.querySelector('#book-trip').disabled")
+                # Shared native validation exposes an explicit inline error and invalid field state.
+                page.fill("#new-username", "bad name")
+                page.fill("#new-password", TEST_PASSWORD)
+                page.locator("#new-user-form button").click()
+                assert page.locator("#new-username").get_attribute("aria-invalid") == "true"
+                assert page.locator("#users-feedback").get_attribute("role") == "alert"
+                page.fill("#new-username", "")
+                page.fill("#new-password", "")
+                page.click("#load-records")
+                page.wait_for_function(
+                    "document.querySelector('#records-feedback').textContent.includes('Snapshot refreshed')"
+                )
+                review_interface(page, "admin")
                 # Swagger loads without external services and can execute authenticated mutations.
                 swagger_context = browser.new_context()
                 swagger = swagger_context.new_page()
@@ -292,7 +502,7 @@ def main():
                 page.fill("#password", TEST_PASSWORD)
                 page.click("#sign-in")
                 page.wait_for_function(
-                    "document.querySelector('#records-feedback').textContent.includes('Server unavailable')"
+                    "document.querySelector('#records-feedback').textContent.includes('Disconnected')"
                 )
                 assert not errors, errors
                 browser.close()
@@ -300,8 +510,14 @@ def main():
                     "Chromium passed through separate frontend/API processes: admin login/roles, stored reports, server pagination/search, "
                     "text-safe details, user creation/revocation, passenger booking/cancellation, "
                     "operator session controls, configuration gates/save, logout, network error, "
-                    "desktop/mobile layout, Swagger login and CSRF-protected Try it out; no JavaScript errors."
+                    "all four interfaces at desktop/phone widths, exact palette, confirmed arrival, mobile Stop, "
+                    "stale/invalid/disconnected telemetry, fault retention on reconnect, keyboard focus, "
+                    "Swagger login and CSRF-protected Try it out; no JavaScript errors."
                 )
+                if args.axe:
+                    print(
+                        "axe-core: zero detected WCAG 2.1 A/AA violations in the tested desktop and phone views."
+                    )
         finally:
             if frontend is not None:
                 frontend.terminate()
