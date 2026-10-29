@@ -164,7 +164,7 @@ def main():
                 driver.wait_for_function(
                     "document.querySelector('#account-identity').textContent.includes('operator')"
                 )
-                driver.goto(base + "/")
+                driver.goto(base + "/operator")
                 driver.wait_for_function("document.querySelector('#token').value === ''")
                 driver.click("#reset")
                 driver.wait_for_function("document.querySelector('#state').textContent === 'READY'")

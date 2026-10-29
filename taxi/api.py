@@ -3,32 +3,22 @@ import contextlib
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict
 from dotenv import load_dotenv
 from .storage import Store
-from .supervisor import Supervisor, Conflict
+from .supervisor import Supervisor
 from .navigation import POINTS
 from .auth import Auth, digest
 import time
-from .accounts import router as account_router
+from .routers.admin import router as account_router
+from .routers.operator import router as operator_router
+from .routers.passenger import router as passenger_router
+from .routers.common import visible_snapshot
 
 STATIC = Path(__file__).parent / "static"
-
-
-class TripRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    destination: str
-
-
-class Hazards(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    obstacle: bool
-    sensor_failed: bool
-    link_failed: bool
 
 
 def create_app(db_path=None, operator_token=None, run_loop=True):
@@ -85,6 +75,8 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
     app = FastAPI(title="Campus Taxi Prototype", version="0.1.0", lifespan=lifespan)
 
     app.include_router(account_router)
+    app.include_router(operator_router)
+    app.include_router(passenger_router)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request, exc):
@@ -108,33 +100,7 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
         response.headers["Referrer-Policy"] = "same-origin"
         return response
 
-    async def authorize(request: Request):
-        return app.state.auth.require(request, "operator")
-
-    def trip_for(user, trip_id):
-        row = app.state.store.db.execute("SELECT * FROM trips WHERE id=?", (trip_id,)).fetchone()
-        if not row or (user["role"] == "passenger" and row["owner_id"] != user["id"]):
-            raise HTTPException(404, "Trip not found")
-        return dict(row)
-
-    def visible_snapshot(user):
-        result = app.state.core.snapshot()
-        if result["trip"]:
-            trip = result["trip"]
-            if not user or (user["role"] == "passenger" and trip.get("owner_id") != user["id"]):
-                result["trip"] = None
-            else:
-                trip.pop("owner_id", None)
-        return result
-
-    def execute(fn, *args):
-        try:
-            return fn(*args)
-        except Conflict as exc:
-            raise HTTPException(409, str(exc)) from exc
-        except ValueError as exc:
-            raise HTTPException(422, str(exc)) from exc
-
+    @app.get("/operator", include_in_schema=False)
     @app.get("/", include_in_schema=False)
     async def index():
         return FileResponse(STATIC / "index.html")
@@ -165,71 +131,7 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
 
     @app.get("/api/status")
     async def status(request: Request):
-        return visible_snapshot(app.state.auth.identity(request, required=False))
-
-    @app.post("/api/trips", status_code=201)
-    async def start(body: TripRequest, request: Request):
-        user = app.state.auth.require(request, "passenger", "operator")
-        return execute(
-            app.state.core.start,
-            body.destination,
-            user["id"] if user["role"] == "passenger" else None,
-        )
-
-    @app.get("/api/trips")
-    async def trips(request: Request):
-        user = app.state.auth.identity(request)
-        if user["role"] == "passenger":
-            return [
-                dict(r)
-                for r in app.state.store.db.execute(
-                    "SELECT * FROM trips WHERE owner_id=? ORDER BY created_at DESC,id DESC LIMIT 100",
-                    (user["id"],),
-                )
-            ]
-        return app.state.store.trips()
-
-    @app.get("/api/trips/{trip_id}")
-    async def trip(trip_id: str, request: Request):
-        return trip_for(app.state.auth.identity(request), trip_id)
-
-    @app.post("/api/trips/{trip_id}/cancel")
-    async def cancel(trip_id: str, request: Request):
-        user = app.state.auth.require(request, "passenger", "operator")
-        trip_for(user, trip_id)
-        core = app.state.core
-        if not core.trip or core.trip["id"] != trip_id or core.trip["status"] != "ACTIVE":
-            raise HTTPException(409, "Trip is not the active mission")
-        core.stop("trip_cancelled")
-        return visible_snapshot(user)
-
-    @app.post("/api/operator/stop", dependencies=[Depends(authorize)])
-    async def stop():
-        app.state.core.stop()
-        return app.state.core.snapshot()
-
-    @app.post("/api/operator/rearm", dependencies=[Depends(authorize)])
-    async def rearm():
-        execute(app.state.core.rearm)
-        return app.state.core.snapshot()
-
-    @app.post("/api/simulation/reset", dependencies=[Depends(authorize)])
-    async def reset():
-        execute(app.state.core.reset)
-        return app.state.core.snapshot()
-
-    @app.post("/api/simulation/hazards", dependencies=[Depends(authorize)])
-    async def hazards(body: Hazards):
-        core = app.state.core
-        core.obstacle, core.sensor_failed, core.link_failed = (
-            body.obstacle,
-            body.sensor_failed,
-            body.link_failed,
-        )
-        core.store.event("hazards", body.model_dump())
-        # Apply an obstacle stop before responding, rather than waiting for the next timer.
-        core.step()
-        return core.snapshot()
+        return visible_snapshot(app, app.state.auth.identity(request, required=False))
 
     @app.get("/api/events")
     async def events(request: Request):
@@ -260,7 +162,7 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
                     if token
                     else None
                 )
-                await ws.send_json(visible_snapshot(dict(row) if row else None))
+                await ws.send_json(visible_snapshot(app, dict(row) if row else None))
                 await asyncio.sleep(0.2)
         except (WebSocketDisconnect, RuntimeError):
             pass

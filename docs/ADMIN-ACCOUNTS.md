@@ -1,6 +1,7 @@
 # Member 3: accounts, ownership and administration
 
-Implemented on `feature/admin-interface`; human review and a merged PR remain pending.
+Developed on `feature/admin-interface`; technical integration review is recorded below.
+Human team sign-off is separate from the automated checks.
 No real account credentials are bundled. The shared operator token is not an admin credential.
 
 ## First administrator and local startup
@@ -161,3 +162,26 @@ Sign in again, inspect reports/history and run a fresh simulated trip. Stop the 
 server afterward. Preserve the original database and backup; select the intended data
 directory explicitly rather than overwriting or deleting either. Backups/retention and
 actual off-machine recovery remain the service owner's operational responsibility.
+
+## Integration review against Member 2 main branch (29 October 2026)
+
+The review integrated main at `97aa432` and replaced disconnected prototype entry points
+with shared application-owned state. `taxi/routers/passenger.py` owns trip endpoints;
+`taxi/routers/operator.py` owns role-gated mission commands; `taxi/routers/admin.py` exposes
+account/admin routes. None instantiate a supervisor. `/operator` serves the working
+dashboard, and the old standalone operator page redirects there. `uvicorn api:app` now
+uses the same canonical app factory as `python -m taxi`.
+
+`POST /api/passenger/book` is an alias of `/api/trips`: JSON contains `destination` only,
+using configured stop IDs A/B/C. `POST /api/operator/start` takes the same destination-only
+payload and requires operator authority. Old prototype `start_node`, `destination_node`,
+`operator_id` and hard-coded trip IDs are not an authentication or routing contract.
+Use `/ws/telemetry` for read-only updates; it never advances movement. The supervisor
+loop alone advances the simulation. Removed prototype `/api/vehicle/clear` auto-resume
+behavior is not available; clearing simulated hazards never rearms a fault.
+
+Configuration labels update both the operator destination selector and SVG map on reload.
+New tests confirm that both workstream aliases share one supervisor, passenger IDs are
+owner-scoped, operator start rejects passenger/admin sessions, and faulted/active missions
+reject configuration changes without changing their path or clearing the fault. This is a
+technical integration review; it does not claim personal approval from team members.

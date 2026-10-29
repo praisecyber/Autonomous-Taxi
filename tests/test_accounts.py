@@ -402,3 +402,67 @@ def test_bootstrap_validation_never_exposes_password(tmp_path):
     with pytest.raises(ValueError) as error:
         create_admin(tmp_path / "invalid.sqlite3", "admin", "my-private")
     assert "my-private" not in str(error.value)
+
+
+def test_member_workstream_entrypoints_share_permissions_and_supervisor(accounts):
+    c, admin, app, _ = accounts
+    alice, bob, driver = session(c, "alice"), session(c, "bob"), session(c, "driver")
+    for actor in (alice, admin):
+        assert (
+            c.post("/api/operator/start", headers=actor, json={"destination": "B"}).status_code
+            == 403
+        )
+    assert c.post("/api/passenger/book", json={"destination": "B"}).status_code == 401
+    booked = c.post("/api/passenger/book", headers=alice, json={"destination": "B"})
+    assert booked.status_code == 201
+    tid = booked.json()["id"]
+    assert app.state.core.trip["id"] == tid
+    assert c.get("/api/trips/" + tid, headers=bob).status_code == 404
+    assert c.post("/api/trips/" + tid + "/cancel", headers=bob).status_code == 404
+    assert (
+        c.post("/api/operator/start", headers=driver, json={"destination": "C"}).status_code == 409
+    )
+    assert c.post("/api/operator/stop", headers=driver).status_code == 200
+    assert c.get("/api/trips/" + tid, headers=alice).json()["status"] == "CANCELLED"
+    assert c.post("/api/simulation/reset", headers=driver).status_code == 200
+    started = c.post("/api/operator/start", headers=driver, json={"destination": "C"})
+    assert started.status_code == 201 and app.state.core.trip["id"] == started.json()["id"]
+    assert c.get("/operator").status_code == 200
+
+
+def test_configuration_cannot_clear_faults_or_change_an_active_route(accounts):
+    c, admin, app, _ = accounts
+    driver = session(c, "driver")
+    configuration = c.get("/api/admin/configuration", headers=admin).json()
+    c.post("/api/operator/start", headers=driver, json={"destination": "B"})
+    path = list(app.state.core.path)
+    blocked = c.put("/api/admin/configuration", headers=admin, json=configuration)
+    assert blocked.status_code == 409 and app.state.core.path == path
+    c.post(
+        "/api/simulation/hazards",
+        headers=driver,
+        json={"obstacle": True, "sensor_failed": False, "link_failed": False},
+    )
+    assert app.state.core.state == "FAULT"
+    assert c.put("/api/admin/configuration", headers=admin, json=configuration).status_code == 409
+    assert app.state.core.state == "FAULT" and app.state.core.reason == "obstacle_detected"
+    assert app.state.core.trip["status"] == "FAULTED"
+
+
+def test_root_compatibility_app_uses_canonical_permissions(tmp_path, monkeypatch):
+    monkeypatch.setenv("TAXI_MODE", "simulation")
+    monkeypatch.setenv("TAXI_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("TAXI_ALLOW_LEGACY_TOKEN", "0")
+    import api
+
+    with TestClient(api.app) as client:
+        assert client.get("/api/health").json()["mode"] == "simulation"
+        assert client.post("/api/operator/stop").status_code == 401
+        assert client.post("/api/passenger/book", json={"destination": "B"}).status_code == 401
+        assert client.post("/api/vehicle/clear").status_code == 404
+        assert (
+            api.app.state.store.db.execute(
+                "SELECT count(*) FROM events WHERE kind='boot'"
+            ).fetchone()[0]
+            == 1
+        )

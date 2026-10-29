@@ -1,9 +1,10 @@
 # Member 3 implementation and validation
 
-Work is on `feature/admin-interface`. P3-01 through P3-05 have local implementation and
-validation; P3-06 has an integration contract and runnable integration checks. Human review,
-Member 2 agreement on configuration limits, a PR and merge remain outstanding. Checklist
-boxes stay unchecked until reviewed evidence is linked.
+P3-01 through P3-05 have local implementation and validation. P3-06 has an integration
+contract and runnable integration checks. The technical review incorporated Member 2 main
+at `97aa432`, unified workstream routers and the root application entry point, and verified
+map-label updates. Human team sign-off remains distinct from this technical review.
+Checklist boxes stay unchecked until reviewed evidence is linked.
 
 ## Implemented
 
@@ -18,7 +19,7 @@ boxes stay unchecked until reviewed evidence is linked.
 
 ## Validation — 29 October 2026
 
-- Python 3.12: 30 pytest tests, covering the original simulator plus authentication,
+- Python 3.12: 33 pytest tests, covering the original simulator plus authentication,
   wrong-role denial, cross-passenger read/cancel, session expiry/logout/revocation,
   password change, migration preservation, configuration gates/versions, pagination,
   reports and backup/restore. One upstream Starlette/httpx deprecation warning.
