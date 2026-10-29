@@ -132,6 +132,11 @@ You build the control room and the trip manager behind it. The operator sees wha
 
 ## Member 3 - Administration, accounts and records
 
+Local implementation is available on `feature/admin-interface`; see
+[implementation evidence](ADMIN-RECORDS.md) and the
+[accounts/API/configuration handoff](ADMIN-ACCOUNTS.md). Tasks remain unchecked pending
+review and linked PR evidence. Route geometry expansion still requires Member 2 review.
+
 **Name:** unassigned  |  **Branch:** `feature/admin-interface`  |  **Interface:** `/admin`
 
 ### Frontend section

@@ -19,6 +19,28 @@ def test_dashboard_and_status(client):
     assert data["mode"] == "simulation" and not data["motor_output_enabled"]
 
 
+def test_admin_page_and_protected_records(client):
+    page = client.get("/admin")
+    assert page.status_code == 200
+    assert 'id="admin-trips"' in page.text and 'id="admin-events"' in page.text
+    assert client.get("/static/admin.js").status_code == 200
+    assert client.get("/static/admin.css").status_code == 200
+    for path in ("/api/trips", "/api/events"):
+        assert client.get(path).status_code == 401
+        assert client.get(path, headers={"Authorization": "Bearer wrong-token"}).status_code == 401
+        assert client.get(path, headers=AUTH).status_code == 200
+    assert client.get("/api/trips", headers=AUTH).json() == []
+    assert client.get("/api/events", headers=AUTH).json()[0]["kind"] == "boot"
+
+    trip = client.post("/api/trips", json={"destination": "B"}, headers=AUTH).json()
+    client.post(f"/api/trips/{trip['id']}/cancel", headers=AUTH)
+    records = client.get("/api/trips", headers=AUTH).json()
+    assert records[0]["id"] == trip["id"]
+    assert records[0]["status"] == "CANCELLED"
+    events = client.get("/api/events", headers=AUTH).json()
+    assert events and all("detail" in event and "at" in event for event in events)
+
+
 def test_authorization_and_trip_lifecycle(client):
     assert client.post("/api/trips", json={"destination": "B"}).status_code == 401
     trip = client.post("/api/trips", json={"destination": "B"}, headers=AUTH)

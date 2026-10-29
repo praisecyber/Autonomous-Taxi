@@ -1,75 +1,56 @@
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-import asyncio
-from taxi.schemas import OperatorCommand, TripStatus, TripState
-from taxi.supervisor import mission_supervisor
-from pydantic import BaseModel
+"""Operator-only commands; no global supervisor or telemetry-driven movement."""
 
-router = APIRouter(prefix="/api/operator", tags=["Operator"])
+from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, ConfigDict
+from .common import execute
+from .passenger import TripRequest
 
-@router.post("/stop", response_model=TripStatus)
-async def issue_software_stop(command: OperatorCommand):
-    if command.action != "stop":
-        raise HTTPException(status_code=400, detail="Invalid command")
-    
-    # Trigger the latched fault in the supervisor
-    mission_supervisor.trigger_fault("Operator manual stop")
-    
-    return TripStatus(
-        trip_id="TRIP_123", 
-        state=mission_supervisor.state, 
-        current_speed=0.0, 
-        fault_reason="Operator manual stop"
+router = APIRouter()
+
+
+class Hazards(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    obstacle: bool
+    sensor_failed: bool
+    link_failed: bool
+
+
+async def authorize(request: Request):
+    return request.app.state.auth.require(request, "operator")
+
+
+@router.post("/api/operator/start", dependencies=[Depends(authorize)], status_code=201)
+async def start(body: TripRequest, request: Request):
+    return execute(request.app.state.core.start, body.destination)
+
+
+@router.post("/api/operator/stop", dependencies=[Depends(authorize)])
+async def stop(request: Request):
+    request.app.state.core.stop()
+    return request.app.state.core.snapshot()
+
+
+@router.post("/api/operator/rearm", dependencies=[Depends(authorize)])
+async def rearm(request: Request):
+    execute(request.app.state.core.rearm)
+    return request.app.state.core.snapshot()
+
+
+@router.post("/api/simulation/reset", dependencies=[Depends(authorize)])
+async def reset(request: Request):
+    execute(request.app.state.core.reset)
+    return request.app.state.core.snapshot()
+
+
+@router.post("/api/simulation/hazards", dependencies=[Depends(authorize)])
+async def hazards(body: Hazards, request: Request):
+    core = request.app.state.core
+    core.obstacle, core.sensor_failed, core.link_failed = (
+        body.obstacle,
+        body.sensor_failed,
+        body.link_failed,
     )
-
-@router.post("/rearm", response_model=TripStatus)
-async def issue_rearm(command: OperatorCommand):
-    if command.action != "rearm":
-        raise HTTPException(status_code=400, detail="Invalid command")
-    
-    success = mission_supervisor.rearm_vehicle()
-    if not success:
-        raise HTTPException(status_code=400, detail="Cannot rearm: vehicle not in fault state or checks failed")
-    
-    return TripStatus(
-        trip_id=mission_supervisor.active_trip_id or 'None', 
-        state=mission_supervisor.state, 
-        current_speed=0.0, 
-        fault_reason="Operator manual stop"
-    )
-
-class MissionRequest(BaseModel):
-    start: str
-    destination: str
-
-@router.post("/start", response_model=TripStatus)
-async def start_mission_endpoint(req: MissionRequest):
-    success = mission_supervisor.start_mission(req.start, req.destination)
-    if not success:
-        raise HTTPException(status_code=400, detail="Cannot start: vehicle not ready or invalid route")
-    
-    return TripStatus(
-        trip_id=mission_supervisor.active_trip_id,
-        state=mission_supervisor.state,
-        current_speed=mission_supervisor.current_speed,
-        fault_reason=None
-    )
-
-@router.websocket("/ws/telemetry")
-async def telemetry_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        while True:
-            # Progress the physical movement simulation[cite: 18, 37]
-            mission_supervisor.update_movement(delta_time=0.5)
-            
-            payload = {
-                "trip_id": mission_supervisor.active_trip_id or "None",
-                "state": mission_supervisor.state.value,
-                "current_speed": mission_supervisor.current_speed,
-                "distance_remaining": getattr(mission_supervisor, 'distance_remaining', 0.0),
-                "fault_reason": mission_supervisor.state.name if mission_supervisor.state == TripState.FAULT else None
-            }
-            await websocket.send_json(payload)
-            await asyncio.sleep(0.5)
-    except WebSocketDisconnect:
-        print("Operator dashboard disconnected")
+    core.store.event("hazards", body.model_dump())
+    # Apply an obstacle stop before responding, rather than waiting for the next timer.
+    core.step()
+    return core.snapshot()

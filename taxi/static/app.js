@@ -1,8 +1,10 @@
 const $ = id => document.getElementById(id);
-let lastMessage = 0, latest = null, graph = null;
+let lastMessage = 0, latest = null, graph = null, sessionCsrf = '';
 const xy = ([x,y]) => [80 + x*54, 290-y*44];
 async function api(path, method='GET', body) {
-  const response = await fetch(path, {method, headers:{'Content-Type':'application/json', Authorization:`Bearer ${$('token').value}`}, ...(body === undefined ? {} : {body:JSON.stringify(body)})});
+  const headers = {'Content-Type':'application/json', 'X-Taxi-CSRF':sessionCsrf};
+  if ($('token').value) headers.Authorization = `Bearer ${$('token').value}`;
+  const response = await fetch(path, {method, headers, ...(body === undefined ? {} : {body:JSON.stringify(body)})});
   const data = await response.json();
   if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
   return data;
@@ -53,4 +55,12 @@ function connect() {
   ws.onerror=()=>ws.close();
 }
 setInterval(()=>{if(!lastMessage||Date.now()-lastMessage>1500){$('connection').textContent='○ Stale telemetry';$('start').disabled=true;$('speed').textContent='— (stale)';}},500);
-api('/api/stops').then(data=>{graph=data;connect();}).catch(e=>{$('feedback').textContent=e.message;});
+fetch('/api/auth/me').then(r=>r.ok?r.json():null).then(data=>{
+  if(data?.user) { sessionCsrf=data.csrf_token; $('token').value=''; }
+  return api('/api/stops');
+}).then(data=>{graph=data;
+  $('destination').replaceChildren(...Object.entries(data.stops).map(([id,label])=>new Option(`${id} · ${label}`,id)));
+  for(const label of document.querySelectorAll('[data-stop]')) {
+    const id=label.dataset.stop; label.textContent=`${id} · ${data.stops[id]}`;
+  }
+  $('destination').value='B';connect();}).catch(e=>{$('feedback').textContent=e.message;});
