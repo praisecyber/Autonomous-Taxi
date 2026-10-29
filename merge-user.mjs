@@ -1,5 +1,26 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import readline from 'readline';
+
+function git(args, options = {}) {
+    const result = execFileSync('git', args, { encoding: 'utf8', ...options });
+    return typeof result === 'string' ? result.trim() : '';
+}
+
+function getTargetBranch() {
+    try {
+        return git(['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD']);
+    } catch {
+        for (const branch of ['main', 'master']) {
+            try {
+                git(['show-ref', '--verify', '--quiet', `refs/remotes/origin/${branch}`]);
+                return `origin/${branch}`;
+            } catch {
+                // Try the other conventional default branch.
+            }
+        }
+        throw new Error('Could not determine origin’s default branch. Fetch origin and set origin/HEAD.');
+    }
+}
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -10,8 +31,7 @@ console.log("🚕 Autonomous Taxi - Safe Team Merge Utility\n");
 
 try {
     // Detect the current branch the user is on
-    const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
-    const targetBranch = currentBranch === 'master' ? 'master' : 'main';
+    const currentBranch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
 
     console.log("This script will safely combine the team's latest GitHub code with your local Member 2 files.");
     console.log(`Current local branch: ${currentBranch}\n`);
@@ -20,22 +40,21 @@ try {
         if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
             try {
                 console.log("\n1️⃣  Fetching latest updates from GitHub...");
-                execSync('git fetch origin', { stdio: 'inherit' });
+                git(['fetch', 'origin'], { stdio: 'inherit' });
 
-                console.log(`\n2️⃣  Merging origin/${targetBranch} into your local work...`);
-                execSync(`git merge origin/${targetBranch}`, { stdio: 'inherit' });
+                const targetBranch = getTargetBranch();
+                console.log(`\n2️⃣  Merging ${targetBranch} into your local work...`);
+                git(['merge', targetBranch], { stdio: 'inherit' });
 
                 console.log("\n✅ SUCCESS: The team's code and your code are now safely merged!");
                 console.log("Since this script does not push automatically, you can now upload everything to the group repository by typing:");
                 console.log(`👉 git push origin ${currentBranch}`);
-                
             } catch (error) {
-                console.log("\n⚠️  MERGE CONFLICT DETECTED!");
-                console.log("Git found overlapping changes between your code and the team's code.");
-                console.log("1. Open your files in VS Code and accept/refuse the highlighted changes.");
-                console.log("2. Run: git add .");
-                console.log('3. Run: git commit -m "Resolve merge conflicts"');
-                console.log(`4. Run: git push origin ${currentBranch}`);
+                if (error.status !== undefined && error.status !== 0) {
+                    console.error("\n❌ Git operation failed. Review the Git output above and check `git status` for details.");
+                } else {
+                    console.error(`\n❌ ${error.message}`);
+                }
             }
         } else {
             console.log("Merge aborted.");
@@ -44,6 +63,6 @@ try {
     });
 
 } catch (err) {
-    console.log("❌ Error: Make sure Git is initialized and you have committed your local files first.");
+    console.error(`❌ Unable to start: ${err.message}`);
     rl.close();
 }

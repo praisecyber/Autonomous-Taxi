@@ -1,0 +1,1 @@
+{"version":"0.2.0","configurations":[{"name":"Taxi simulator + dashboard","type":"debugpy","request":"launch","module":"taxi","console":"integratedTerminal","justMyCode":true}]}

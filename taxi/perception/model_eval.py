@@ -1,7 +1,6 @@
 import cv2
 import time
 import torch
-import argparse
 from yolox.exp import get_exp
 from yolox.utils import postprocess
 from yolox.data.data_augment import preproc
