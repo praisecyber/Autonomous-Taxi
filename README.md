@@ -28,6 +28,31 @@ cp .env.example .env
 
 Run one server process, one worker, and one vehicle supervisor. Do not add multiple Uvicorn workers: each would create a separate simulated vehicle. The default command listens only on loopback. Internet access is not needed after installing dependencies.
 
+The **Records** link opens `/admin` for administrator accounts: paginated trip/event
+records, stored-data summaries, user access management and versioned simulation
+configuration. `/account` provides shared sign-in, password changes and an owned-trip
+integration screen for passengers. Operator accounts use the original dashboard.
+
+To create the first administrator, **stop the server** and run:
+
+```bash
+.venv/bin/python -m taxi.manage create-admin --username your-admin-name
+```
+
+Enter a new password at the hidden prompt, then restart `.venv/bin/python -m taxi`.
+No default admin account or password is supplied. The bootstrap command runs only while
+there is no enabled admin. Further accounts are created in `/admin`.
+
+`TAXI_ALLOW_LEGACY_TOKEN=auto` (the default) keeps the original operator-token demo working
+only while no accounts exist. Once accounts exist, sign in at `/account`; operator
+sessions are used by the dashboard automatically. `0` disables the legacy token entirely;
+`1` is an explicit local-demo override and must not be used for a shared account service.
+Before HTTPS deployment, set `TAXI_SECURE_COOKIES=1`; the default supports HTTP loopback
+only. This remains a single-process simulation, not a production deployment.
+
+See [accounts, roles, migrations and backup/restore](docs/ADMIN-ACCOUNTS.md) and the
+[Member 3 validation record](docs/ADMIN-RECORDS.md).
+
 ## Try the full demo
 
 1. Start at **A — Engineering**, select **B — Library**, and start the simulated trip.

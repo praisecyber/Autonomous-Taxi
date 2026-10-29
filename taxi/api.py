@@ -1,17 +1,20 @@
 import asyncio
 import contextlib
 import os
-import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
 from dotenv import load_dotenv
 from .storage import Store
 from .supervisor import Supervisor, Conflict
-from .navigation import STOPS, POINTS, EDGES
+from .navigation import POINTS
+from .auth import Auth, digest
+import time
+from .accounts import router as account_router
 
 STATIC = Path(__file__).parent / "static"
 
@@ -42,6 +45,19 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
         store = Store(path)
         core = Supervisor(store)
         app.state.core, app.state.store = core, store
+        legacy_setting = os.getenv("TAXI_ALLOW_LEGACY_TOKEN", "auto")
+        if legacy_setting not in {"auto", "0", "1"}:
+            store.close()
+            raise RuntimeError("TAXI_ALLOW_LEGACY_TOKEN must be auto, 0 or 1")
+        legacy_enabled = legacy_setting == "1" or (
+            legacy_setting == "auto" and not store.db.execute("SELECT 1 FROM users").fetchone()
+        )
+        app.state.auth = Auth(
+            store,
+            token,
+            legacy_enabled=legacy_enabled,
+            secure_cookie=os.getenv("TAXI_SECURE_COOKIES", "0") == "1",
+        )
 
         async def drive():
             while True:
@@ -68,9 +84,48 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
 
     app = FastAPI(title="Campus Taxi Prototype", version="0.1.0", lifespan=lifespan)
 
-    async def authorize(authorization: str = Header(default="")):
-        if not secrets.compare_digest(authorization, "Bearer " + token):
-            raise HTTPException(401, "Valid operator token required")
+    app.include_router(account_router)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request, exc):
+        # Validation responses must never echo submitted passwords or tokens.
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": [
+                    {"loc": list(error["loc"]), "msg": error["msg"], "type": error["type"]}
+                    for error in exc.errors()
+                ]
+            },
+        )
+
+    @app.middleware("http")
+    async def private_responses(request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/api/") or request.url.path == "/admin":
+            response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "same-origin"
+        return response
+
+    async def authorize(request: Request):
+        return app.state.auth.require(request, "operator")
+
+    def trip_for(user, trip_id):
+        row = app.state.store.db.execute("SELECT * FROM trips WHERE id=?", (trip_id,)).fetchone()
+        if not row or (user["role"] == "passenger" and row["owner_id"] != user["id"]):
+            raise HTTPException(404, "Trip not found")
+        return dict(row)
+
+    def visible_snapshot(user):
+        result = app.state.core.snapshot()
+        if result["trip"]:
+            trip = result["trip"]
+            if not user or (user["role"] == "passenger" and trip.get("owner_id") != user["id"]):
+                result["trip"] = None
+            else:
+                trip.pop("owner_id", None)
+        return result
 
     def execute(fn, *args):
         try:
@@ -84,6 +139,14 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
     async def index():
         return FileResponse(STATIC / "index.html")
 
+    @app.get("/admin", include_in_schema=False)
+    async def admin():
+        return FileResponse(STATIC / "admin.html")
+
+    @app.get("/account", include_in_schema=False)
+    async def account():
+        return FileResponse(STATIC / "account.html")
+
     @app.get("/api/health")
     async def health():
         return {
@@ -94,34 +157,51 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
 
     @app.get("/api/stops")
     async def stops():
-        return {"stops": STOPS, "points": POINTS, "edges": EDGES}
+        return {
+            "stops": app.state.core.config["stops"],
+            "points": POINTS,
+            "edges": app.state.core.config["edges"],
+        }
 
     @app.get("/api/status")
-    async def status():
-        return app.state.core.snapshot()
+    async def status(request: Request):
+        return visible_snapshot(app.state.auth.identity(request, required=False))
 
-    @app.post("/api/trips", dependencies=[Depends(authorize)], status_code=201)
-    async def start(body: TripRequest):
-        return execute(app.state.core.start, body.destination)
+    @app.post("/api/trips", status_code=201)
+    async def start(body: TripRequest, request: Request):
+        user = app.state.auth.require(request, "passenger", "operator")
+        return execute(
+            app.state.core.start,
+            body.destination,
+            user["id"] if user["role"] == "passenger" else None,
+        )
 
-    @app.get("/api/trips", dependencies=[Depends(authorize)])
-    async def trips():
+    @app.get("/api/trips")
+    async def trips(request: Request):
+        user = app.state.auth.identity(request)
+        if user["role"] == "passenger":
+            return [
+                dict(r)
+                for r in app.state.store.db.execute(
+                    "SELECT * FROM trips WHERE owner_id=? ORDER BY created_at DESC,id DESC LIMIT 100",
+                    (user["id"],),
+                )
+            ]
         return app.state.store.trips()
 
-    @app.get("/api/trips/{trip_id}", dependencies=[Depends(authorize)])
-    async def trip(trip_id: str):
-        rows = app.state.store.db.execute("SELECT * FROM trips WHERE id=?", (trip_id,)).fetchone()
-        if not rows:
-            raise HTTPException(404, "Trip not found")
-        return dict(rows)
+    @app.get("/api/trips/{trip_id}")
+    async def trip(trip_id: str, request: Request):
+        return trip_for(app.state.auth.identity(request), trip_id)
 
-    @app.post("/api/trips/{trip_id}/cancel", dependencies=[Depends(authorize)])
-    async def cancel(trip_id: str):
+    @app.post("/api/trips/{trip_id}/cancel")
+    async def cancel(trip_id: str, request: Request):
+        user = app.state.auth.require(request, "passenger", "operator")
+        trip_for(user, trip_id)
         core = app.state.core
         if not core.trip or core.trip["id"] != trip_id or core.trip["status"] != "ACTIVE":
             raise HTTPException(409, "Trip is not the active mission")
         core.stop("trip_cancelled")
-        return core.snapshot()
+        return visible_snapshot(user)
 
     @app.post("/api/operator/stop", dependencies=[Depends(authorize)])
     async def stop():
@@ -151,17 +231,36 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
         core.step()
         return core.snapshot()
 
-    @app.get("/api/events", dependencies=[Depends(authorize)])
-    async def events():
+    @app.get("/api/events")
+    async def events(request: Request):
+        app.state.auth.require(request, "operator", "admin")
         return app.state.store.events()
 
     @app.websocket("/ws/telemetry")
     async def telemetry(ws: WebSocket):
         # Read-only simulation telemetry; no commands accepted over this socket.
+        origin = ws.headers.get("origin")
+        expected_origin = (
+            str(ws.base_url).replace("ws://", "http://").replace("wss://", "https://").rstrip("/")
+        )
+        if origin and origin != expected_origin:
+            await ws.close(code=1008)
+            return
         await ws.accept()
         try:
             while True:
-                await ws.send_json(app.state.core.snapshot())
+                # Revalidate on every message so logout/disable/expiry takes effect.
+                token = ws.cookies.get("taxi_session", "")
+                row = (
+                    app.state.store.db.execute(
+                        """SELECT u.id,u.role FROM sessions s JOIN users u ON u.id=s.user_id
+                       WHERE s.token_hash=? AND s.expires_at>? AND u.enabled=1""",
+                        (digest(token), time.time()),
+                    ).fetchone()
+                    if token
+                    else None
+                )
+                await ws.send_json(visible_snapshot(dict(row) if row else None))
                 await asyncio.sleep(0.2)
         except (WebSocketDisconnect, RuntimeError):
             pass

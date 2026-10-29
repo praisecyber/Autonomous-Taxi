@@ -4,6 +4,7 @@ import math
 import time
 import uuid
 from .navigation import POINTS, route
+from .configuration import load_configuration
 
 
 class Conflict(ValueError):
@@ -17,6 +18,7 @@ class Supervisor:
 
     def __init__(self, store, clock=time.monotonic):
         self.store, self.clock = store, clock
+        self.config = load_configuration(store)
         self.mode = "simulation"
         self.state = "READY"
         self.position = list(POINTS["A"])
@@ -33,7 +35,7 @@ class Supervisor:
         self.sequence = 0
         self.store.event("boot", {"mode": self.mode, "state": self.state})
 
-    def start(self, destination):
+    def start(self, destination, owner_id=None):
         if self.state != "READY":
             raise Conflict("Vehicle must be READY")
         if not self.current_stop:
@@ -43,12 +45,15 @@ class Supervisor:
         now = self.clock()
         if now - min(self.last_sensor, self.last_link) > self.STALE_AFTER:
             raise Conflict("Waiting for fresh simulated telemetry")
-        self.path = route(self.current_stop, destination)
+        self.path = route(
+            self.current_stop, destination, self.config["stops"], self.config["edges"]
+        )
         self.trip = {
             "id": uuid.uuid4().hex,
             "origin": self.current_stop,
             "destination": destination,
             "status": "ACTIVE",
+            "owner_id": owner_id,
         }
         self.target_index = 1
         self.state = "ACTIVE"

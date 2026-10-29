@@ -18,3 +18,5 @@ jobs:
         with:
           node-version: '22'
       - run: node --check taxi/static/app.js
+      - run: node --check taxi/static/admin.js
+      - run: node --check taxi/static/account.js

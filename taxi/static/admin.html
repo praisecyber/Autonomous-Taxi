@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Campus Taxi · Administration</title><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/admin.css"></head>
+<body>
+<header><a href="/" class="brand"><span class="brand-icon">CT</span> CAMPUS TAXI <small>ADMINISTRATION</small></a><span class="pill">SIMULATION ONLY</span><nav aria-label="Main navigation"><a href="/">Operator</a><a href="/account">Account</a><a href="/admin" aria-current="page">Admin</a></nav></header>
+<main>
+<section class="intro"><div><p class="eyebrow">SERVICE ADMINISTRATION</p><h1>The service record.</h1><p>Manage accounts and review stored simulation records. Administrator access required.</p></div></section>
+<section class="panel controls" aria-labelledby="access-heading">
+<h2 id="access-heading">Administrator session</h2>
+<p id="identity">Sign in with an administrator account. The local operator token cannot grant admin access.</p>
+<form id="access-form"><label for="username">Username</label><input id="username" autocomplete="username" required maxlength="64"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required maxlength="128"><button id="sign-in">Sign in</button></form>
+<div class="button-row"><button id="load-records" type="button" disabled>Refresh records</button><button id="clear-records" class="secondary" type="button" disabled>Sign out</button></div>
+<p id="records-feedback" role="status" aria-live="polite">Sign in to load records.</p>
+<p class="muted">Records are paginated snapshots. Refresh for new changes. Reports cover all stored simulation records.</p>
+</section>
+<div id="admin-content" hidden>
+<section class="panel history controls" aria-labelledby="reports-heading"><h2 id="reports-heading">Stored-record summaries</h2><p class="muted">Actual counts grouped by recorded status and event type.</p><div id="reports"></div></section>
+<section class="panel history" aria-labelledby="trips-heading">
+<div class="panel-head"><h2 id="trips-heading">Trip history</h2><span id="trip-count">Not loaded</span></div>
+<p class="muted table-hint">On small screens, scroll tables horizontally for details. Apply filters to search all stored records.</p>
+<form id="trip-filter" class="filters"><div><label for="trip-search">Search ID or route</label><input id="trip-search" type="search" maxlength="128"></div><div><label for="trip-status">Stored status</label><select id="trip-status"><option value="">All statuses</option></select></div><button>Apply trip filters</button></form>
+<div class="table-wrap"><table><caption class="visually-hidden">Stored trips, newest first</caption><thead><tr><th scope="col">Trip</th><th scope="col">Route</th><th scope="col">Status</th><th scope="col">Created</th><th scope="col">Details</th></tr></thead><tbody id="admin-trips"></tbody></table></div>
+<div class="pager"><button id="trip-prev" class="secondary compact">Previous trips</button><button id="trip-next" class="secondary compact">Next trips</button></div>
+</section>
+<section class="panel history" aria-labelledby="events-heading">
+<div class="panel-head"><h2 id="events-heading">Event log</h2><span id="event-count">Not loaded</span></div>
+<form id="event-filter" class="filters"><div><label for="event-search">Search event ID or detail</label><input id="event-search" type="search" maxlength="128"></div><div><label for="event-kind">Stored event type</label><select id="event-kind"><option value="">All types</option></select></div><button>Apply event filters</button></form>
+<div class="table-wrap"><table><caption class="visually-hidden">Stored events, newest first</caption><thead><tr><th scope="col">Event</th><th scope="col">Type</th><th scope="col">Recorded</th><th scope="col">Details</th></tr></thead><tbody id="admin-events"></tbody></table></div>
+<div class="pager"><button id="event-prev" class="secondary compact">Previous events</button><button id="event-next" class="secondary compact">Next events</button></div>
+</section>
+<section class="panel history controls" aria-labelledby="users-heading"><h2 id="users-heading">Accounts and permissions</h2><p>Changing a role or disabling an account revokes all of its sessions. Another administrator must change your own access.</p>
+<form id="new-user-form"><label for="new-username">New username</label><input id="new-username" autocomplete="off" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{2,63}" required><label for="new-password">Initial password (12–128 characters)</label><input id="new-password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required><label for="new-role">Role</label><select id="new-role"><option value="passenger">Passenger</option><option value="operator">Operator</option><option value="admin">Administrator</option></select><button>Create account</button></form>
+<p id="users-feedback" role="status" aria-live="polite"></p><div class="table-wrap"><table><thead><tr><th scope="col">Username</th><th scope="col">Role</th><th scope="col">Enabled</th><th scope="col">Action</th></tr></thead><tbody id="users"></tbody></table></div><p id="users-count"></p><div class="pager"><button id="users-prev" class="secondary compact">Previous users</button><button id="users-next" class="secondary compact">Next users</button></div>
+</section>
+<section class="panel history controls" aria-labelledby="configuration-heading"><h2 id="configuration-heading">Simulation stop and route configuration</h2><p>Save only after an operator resets to READY at A with no trip. Stop IDs, map coordinates and mapped road segments remain fixed. Every node must remain reachable. New roads require a reviewed operator/planner change.</p>
+<form id="configuration-form"><label for="configuration">Versioned configuration (JSON)</label><textarea id="configuration" rows="18" spellcheck="false" required></textarea><div class="button-row"><button>Validate and save</button><button id="reload-configuration" type="button" class="secondary">Reload configuration</button></div></form><p id="configuration-feedback" role="status" aria-live="polite"></p>
+</section>
+<section class="panel history controls"><h2>Backups and restoration</h2><p>Stop the server before administration commands. Backups contain private account and trip data. Keep them outside Git and use a new output path.</p><pre>.venv/bin/python -m taxi.manage backup --source runtime/taxi.sqlite3 --output runtime/backups/taxi-copy.sqlite3
+.venv/bin/python -m taxi.manage restore --source runtime/backups/taxi-copy.sqlite3 --output runtime/restored.sqlite3</pre><p>Restore checks integrity, migrates supported schemas, revokes sessions and interrupts active trips. Verify the restored copy before selecting it as the server database. See docs/ADMIN-ACCOUNTS.md for the full procedure.</p></section>
+</div>
+<footer>Simulation only · Software controls do not establish physical stopping.</footer>
+</main><script src="/static/admin.js"></script>
+</body></html>
