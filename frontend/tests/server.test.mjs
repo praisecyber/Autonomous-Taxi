@@ -26,7 +26,7 @@ test('frontend serves assets and proxies API cookies, origins and failures', asy
   try {
     await Promise.race([once(process.stdout,'data'),once(process,'exit').then(()=>{throw new Error('Frontend exited');}),
       new Promise((_,reject)=>{const timer=setTimeout(()=>reject(new Error('Frontend startup timeout')),5000);timer.unref();})]);
-    for(const path of ['/','/admin','/account','/operator','/static/app.js']) assert.equal((await request(port,path)).status,200);
+    for(const path of ['/','/admin','/account','/operator','/passenger','/diagnostics','/static/shared.css','/static/app.js']) assert.equal((await request(port,path)).status,200);
     const forwarded=await request(port,'/api/auth/me?q=test',{Origin:`http://127.0.0.1:${port}`,
       Cookie:'taxi_session=test-cookie','X-Forwarded-Host':'evil.example'});
     assert.equal(forwarded.status,200);

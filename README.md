@@ -21,7 +21,7 @@ In a **second terminal**, from the same repository root, start the frontend:
 node frontend/server.mjs
 ```
 
-Open **http://127.0.0.1:3000**. The operator token is `local-dev-only` unless changed in `.env`. Python 3.11 or 3.12 also works: select the installed version when creating the environment. Activation is unnecessary. API reference: http://127.0.0.1:3000/docs (forwarded to the backend on port 8000).
+Open **http://127.0.0.1:3000**. The operator token is `local-dev-only` unless changed in `.env`. Python 3.11 or 3.12 also works: select the installed version when creating the environment. Activation is unnecessary. Swagger API explorer: **http://127.0.0.1:3000/docs** (also available directly on backend port 8000). The OpenAPI schema is `/openapi.json`. Swagger assets are served locally; no CDN is needed. See [Swagger usage](docs/SWAGGER.md).
 
 Linux / macOS:
 
@@ -62,6 +62,18 @@ only. This remains a single-process simulation, not a production deployment.
 
 See [accounts, roles, migrations and backup/restore](docs/ADMIN-ACCOUNTS.md) and the
 [Member 3 validation record](docs/ADMIN-RECORDS.md).
+
+## Interfaces and project theme
+
+The frontend now includes **Passenger** (`/passenger`), **Operator** (`/operator`),
+**Admin** (`/admin`) and **Diagnostics** (`/diagnostics`), plus shared account access
+at `/account`. All use the green/yellow/black palette and `frontend/public/shared.css`.
+Choose a destination on Passenger, supervise missions on Operator, manage authorized
+records/configuration on Admin, and inspect simulated validity/missing hardware on Diagnostics.
+
+Stale or disconnected telemetry is explicitly labelled, and current measurements/progress
+become unavailable. Stop is a prominent software-only action, including on phones.
+See [frontend validation and accessibility review](docs/FRONTEND-REVIEW.md).
 
 ## Try the full demo
 

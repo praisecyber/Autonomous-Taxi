@@ -75,8 +75,8 @@ removes the trip record without waiting for reconnection. Public simulation posi
 route and sensor information remain available; this is not a private fleet deployment.
 
 Member 1 should reuse the `/account` login/session contract rather than another auth
-system. The small passenger section there demonstrates booking and ownership; a dedicated
-passenger interface can replace it. Member 2's existing dashboard now uses an operator
+system. The dedicated `/passenger` screen uses that contract for booking, progress and owned
+records; `/account` now concentrates on sign-in and password/session management. Member 2's existing dashboard now uses an operator
 session automatically and loads configured stop labels. Original token headers still work
 in explicit demo mode, but never grant administrator access.
 

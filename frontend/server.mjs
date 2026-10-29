@@ -12,7 +12,7 @@ if (backend.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(backend
     backend.username || backend.password || backend.pathname !== '/' || backend.search || backend.hash) {
   throw new Error('TAXI_API_URL must be a local HTTP backend origin, for example http://127.0.0.1:8000');
 }
-const pages = new Map([['/', 'index.html'], ['/operator', 'index.html'], ['/admin', 'admin.html'], ['/account', 'account.html']]);
+const pages = new Map([['/', 'index.html'], ['/operator', 'index.html'], ['/admin', 'admin.html'], ['/account', 'account.html'], ['/passenger', 'passenger.html'], ['/diagnostics', 'diagnostics.html']]);
 const types = new Map([['.html', 'text/html; charset=utf-8'], ['.js', 'text/javascript; charset=utf-8'], ['.css', 'text/css; charset=utf-8']]);
 const localHosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
 const isApi = path => path.startsWith('/api/') || path === '/openapi.json' || path === '/docs' || path.startsWith('/docs/') || path === '/redoc';

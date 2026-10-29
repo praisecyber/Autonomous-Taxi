@@ -16,6 +16,7 @@ from .routers.admin import router as account_router
 from .routers.operator import router as operator_router
 from .routers.passenger import router as passenger_router
 from .routers.common import visible_snapshot
+from .swagger import install_swagger
 
 
 def create_app(db_path=None, operator_token=None, run_loop=True):
@@ -69,7 +70,7 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
             finally:
                 store.close()
 
-    app = FastAPI(title="Campus Taxi Prototype", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Campus Taxi Prototype", version="0.1.0", lifespan=lifespan, docs_url=None)
 
     app.include_router(account_router)
     app.include_router(operator_router)
@@ -151,4 +152,5 @@ def create_app(db_path=None, operator_token=None, run_loop=True):
         except (WebSocketDisconnect, RuntimeError):
             pass
 
+    install_swagger(app)
     return app
