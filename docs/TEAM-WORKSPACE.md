@@ -141,6 +141,8 @@ You build the control room and the trip manager behind it. The operator sees wha
 
 ## Member 3 - Administration, accounts and records
 
+Current software-only follow-through: [30 October handoff, account checklist and recovery runbook](MEMBER3-SOFTWARE-HANDOFF.md). Private delivery/live password changes and public hosting remain pending.
+
 Local implementation is available on `feature/admin-interface`; see
 [implementation evidence](ADMIN-RECORDS.md) and the
 [accounts/API/configuration handoff](ADMIN-ACCOUNTS.md). Tasks remain unchecked pending

@@ -43,3 +43,7 @@ transfer existing data using the documented restore procedure, obtain public TLS
 and verify the final origin. Deliver credentials privately and have users rotate
 them. Schedule protected off-machine backups and repeat recovery drills. No public
 service or certificate has been created. Hardware actuation remains unimplemented.
+
+## Software-only follow-through — 30 October
+
+See [Member 3 handoff](MEMBER3-SOFTWARE-HANDOFF.md) for the fresh isolated HTTPS/restore drill, account rotation status, repeatable admin demonstration, backup retention policy and outstanding public deployment inputs.
