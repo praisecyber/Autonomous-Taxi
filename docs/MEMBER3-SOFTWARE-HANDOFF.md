@@ -122,3 +122,33 @@ before sharing. Local `probix.localhost:8443` is not an Internet deployment.
 Remaining deployment inputs: controlled public domain/DNS, hosting target and access,
 firewall/reachability, named service owner, protected off-machine backup destination
 and recovery key custody. No public hostname/certificate/service is claimed.
+
+## Prepared private delivery and backup checkpoints
+
+Individual initial-credential files are prepared under ignored, owner-only
+`runtime/provisioning/individual/`, named `<username>.json`. Each file contains only
+that account's entry and is mode 0600. The master credential file was preserved.
+These files are ready for the account owner to deliver privately; preparation does
+not establish delivery, recipient acceptance or live rotation. Do not share the
+whole directory or use initial credentials after that user has rotated.
+
+Repeatable local backup command (from repository root):
+
+```bash
+.venv/bin/python scripts/backup_checkpoint.py
+```
+
+Defaults: source `runtime/taxi.sqlite3`, output `runtime/backups/checkpoints`.
+Use `--source` and `--directory` for another database/location. Existing output
+directories must be owner-only (0700); the command refuses broader permissions.
+Each run creates a uniquely named private database and SHA-256 receipt without
+replacing/deleting previous copies. A successful checkpoint is not proof of an
+off-machine copy or a restore drill; its receipt explicitly marks both false.
+
+The command was exercised on the actual local database. Isolated checks verified
+unique outputs, matching receipt hashes, mode-0600 files, rejection of a nonprivate
+directory and preservation of previous copies. Existing backup/restore regression
+checks remain the recovery evidence. No timer, automatic pruning or remote transfer
+has been enabled. Once the deployment owner/destination is selected, run this command
+daily under that service account and monitor nonzero exits; use the documented
+7-daily/4-weekly policy only after verifying at least one recoverable remote copy.
