@@ -355,6 +355,15 @@ def main():
                 assert driver.locator("#speed").inner_text() == "Unavailable"
                 assert driver.locator("#route-map").get_attribute("data-stale") == "true"
                 review_interface(driver, "operator-stale")
+                # A missing failure flag must never become a fabricated healthy sample.
+                malformed = driver.request.get(base + "/api/status").json()
+                del malformed["telemetry"]["sensor_failed"]
+                transport["client"].send(json.dumps(malformed))
+                driver.wait_for_function(
+                    "document.querySelector('#connection').textContent.includes('Invalid')"
+                )
+                assert driver.locator("#rearm").is_disabled()
+                assert driver.locator("#speed").inner_text() == "Unavailable"
                 transport["client"].send("not valid telemetry")
                 driver.wait_for_function(
                     "document.querySelector('#connection').textContent.includes('Invalid')"

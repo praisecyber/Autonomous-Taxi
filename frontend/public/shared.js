@@ -20,32 +20,8 @@ window.Taxi = (() => {
   }
   function badge(code) { const [label,tone]=state(code); const span=document.createElement('span');span.className='badge';span.dataset.tone=tone;span.textContent=label;return span; }
   function connection(id,kind,detail) { const el=typeof id==='string'?document.getElementById(id):id; if(!el)return; el.dataset.kind=kind; text(el,detail || ({live:'● Connected · Simulation',stale:'◷ Stale telemetry',disconnected:'○ Disconnected'})[kind]); }
-  function healthy(s) { return s && !s.telemetry.sensor_failed && !s.telemetry.link_failed && s.telemetry.sensor_age_s <= .5 && s.telemetry.link_age_s <= .5; }
-  function watchTelemetry(onData,onConnection) {
-    let socket=null, stopped=false, last=0, current='disconnected', retry;
-    const emit=(kind,detail)=>{if(current!==kind || detail){current=kind;onConnection(kind,detail);}};
-    onConnection('disconnected');
-    function connect() {
-      if(stopped)return;
-      const ws=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws/telemetry`);socket=ws;
-      ws.onmessage=event=>{
-        if(ws!==socket || stopped)return;
-        try {
-          const s=JSON.parse(event.data), t=s.telemetry;
-          if(s.mode!=='simulation' || !['READY','ACTIVE','STOPPED','FAULT','COMPLETE'].includes(s.state) || !t || t.source!=='simulated' || ![s.speed_mps,s.position?.x,s.position?.y,t.sensor_age_s,t.link_age_s].every(Number.isFinite) || t.sensor_age_s<0 || t.link_age_s<0) throw new Error('Invalid snapshot');
-          last=performance.now();emit('live');onData(s);
-        } catch { emit('stale','⚠ Invalid telemetry'); }
-      };
-      ws.onclose=()=>{if(ws!==socket || stopped)return;emit('disconnected');retry=setTimeout(connect,1800);};
-      ws.onerror=()=>ws.close();
-    }
-    const timer=setInterval(()=>{if(current==='live' && performance.now()-last>1500)emit('stale');},300);
-    const offline=()=>{emit('disconnected');socket?.close();};window.addEventListener('offline',offline);
-    const close=()=>{stopped=true;clearTimeout(retry);clearInterval(timer);socket?.close();window.removeEventListener('offline',offline);};
-    window.addEventListener('pagehide',close,{once:true});
-    window.addEventListener('pageshow',event=>{if(event.persisted)location.reload();});
-    connect();return close;
-  }
+  const healthy = s => TaxiTelemetry.healthy(s);
+  const watchTelemetry = (onData,onConnection) => TaxiTelemetry.watch(onData,onConnection);
   function mountMap(id) {
     const el=document.getElementById(id);el.classList.add('route-map');el.dataset.stale='true';
     el.innerHTML='<svg viewBox="0 0 700 390" role="img" aria-label="Simulated campus route: Engineering, Library and Student Centre"><defs><pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse"><path class="map-grid" d="M30 0H0V30" fill="none"/></pattern></defs><rect width="700" height="390" fill="url(#grid)"/><path class="map-road" d="M80 290H620 M350 290V70"/><path class="map-center" d="M80 290H620 M350 290V70"/><polyline class="route-line" points=""/><g><circle class="map-stop" cx="80" cy="290" r="11"/><circle class="map-stop" cx="620" cy="290" r="11"/><circle class="map-stop" cx="350" cy="70" r="11"/></g><g><text class="map-label" data-stop="A" x="80" y="335">A · Engineering</text><text class="map-label" data-stop="B" x="620" y="335">B · Library</text><text class="map-label" data-stop="C" x="350" y="40">C · Student Centre</text></g><g class="vehicle-marker" transform="translate(80 290)" visibility="hidden"><circle class="map-car" r="25" opacity=".12"/><rect class="map-car" x="-13" y="-9" width="26" height="18" rx="5"/><path class="map-direction" d="M4 -4L9 0 4 4"/></g></svg>';

@@ -63,10 +63,12 @@ Evidence/runbook: [Member 3 software handoff](MEMBER3-SOFTWARE-HANDOFF.md),
 
 The existing diagnostics interface labels simulation and missing information.
 
-- [ ] Define fresh/stale/missing/malformed/disconnected simulated telemetry fixtures with Member 2.
-- [ ] Implement or strengthen bounded parsing, field validation, timestamp/age and timeout handling.
-- [ ] Test silence, delayed samples, malformed messages and WebSocket disconnect/reconnect.
-- [ ] Verify faults stay latched and displays remain unavailable until fresh valid data arrives.
+- [x] Add deterministic fresh/stale/missing/malformed/disconnected WebSocket fixtures — [software telemetry evidence](TELEMETRY-SOFTWARE.md).
+- [ ] Member 2 reviews the source timestamp and future backend queue contract.
+- [x] Bound frontend message size and validate schema, explicit failure flags, reported ages and transport silence — [contract/tests](TELEMETRY-SOFTWARE.md).
+- [ ] Add capture timestamp semantics only after agreeing the backend contract; motion sequence is not a clock.
+- [x] Test silence, stale reported samples, malformed messages and WebSocket disconnect/reconnect — deterministic Node and browser checks.
+- [x] Verify FAULT is retained on reconnect and invalid/stale displays stay unavailable until valid data arrives — [browser runner](../scripts/check_admin_browser.py).
 - [ ] Verify diagnostics cannot read private history/events/configuration or issue operator commands.
 - [ ] Link phone/desktop screenshots, parser/freshness/fault test results and a reconnect walkthrough.
 
