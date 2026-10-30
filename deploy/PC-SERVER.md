@@ -4,6 +4,14 @@ The PC hosts the Python backend, frontend files, Caddy HTTPS proxy and SQLite da
 Render is not used. This is a software simulation service. Keep exactly one backend
 worker/supervisor per database. All browser traffic uses the same HTTPS origin.
 
+## Planned operating system and access
+
+The uploaded detailed plan specifies Windows PowerShell (PDF page 4), with phones
+or other computers accessing the laptop frontend over the local network (page 7).
+Use **Windows PC + local-network clients** as the intended deployment. See
+[plan alignment](../docs/PLAN-ALIGNMENT.md). The current Bash launcher runs in
+Linux/WSL; it is not a native Windows service, and LAN sharing is not enabled yet.
+
 ## Linux or Windows with WSL2
 
 The existing launcher is Bash-based. Use Linux, or Ubuntu in WSL2 on Windows with
@@ -64,8 +72,10 @@ by clients. WSL may additionally require networking/forwarding configuration.
 Do not simply expose port 8000 or set wildcard allowed hosts. Keep Python on loopback;
 only the HTTPS proxy should accept client traffic.
 
-The exact PC OS and desired access scope (same PC or LAN) have not been supplied.
-LAN binding and firewall changes are therefore not applied. No router forwarding,
+The uploaded plan establishes Windows and LAN use. The actual Windows version,
+WSL networking mode and active PC LAN address have not been inspected here.
+LAN binding and firewall changes are not applied to the user's PC from this cloud
+workspace. No router forwarding,
 public domain, or Internet access is needed for same-PC use.
 
 ## Data, backups and recovery
@@ -100,3 +110,22 @@ and does not use an outbound proxy. It does not verify login, session permission
 or WSS; run the separate browser/operational checks for those. No insecure TLS mode
 is provided. On Windows native Python, use `.venv\Scripts\python.exe` if that is
 the selected Python environment; the server launcher currently uses Linux/WSL.
+
+## Inspect the Windows server PC before LAN setup
+
+Run in PowerShell on that PC, not in this cloud workspace:
+
+```powershell
+Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion
+Get-NetConnectionProfile | Select-Object InterfaceAlias, NetworkCategory
+Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -ne '127.0.0.1' } | Select-Object InterfaceAlias, IPAddress
+wsl --status
+```
+
+Use the adapter for the intended trusted local network; do not choose a VPN/virtual
+adapter blindly. Keep the backend on loopback. LAN rollout needs a chosen reachable
+PC IP/name, a proxy listener for that interface, a certificate matching that IP/name,
+client trust in its public CA and a narrowly scoped Windows firewall rule. WSL may
+need forwarding or mirrored networking depending on its version. Do not apply
+broad firewall or router changes from guessed network details. These inspection
+commands do not enable network access or reveal application passwords.

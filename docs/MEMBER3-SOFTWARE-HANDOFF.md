@@ -162,3 +162,5 @@ localhost on another device refers to that device, not the server PC. Public Int
 exposure is separate and is not enabled. Keep the database on the server PC and
 select a protected separate backup destination. Named owner, PC operating system,
 LAN addressing and automatic-start configuration still need confirmation.
+
+The uploaded detailed plan now establishes intended Windows/LAN use; see [plan alignment](PLAN-ALIGNMENT.md). Actual PC network/WSL inspection and LAN HTTPS rollout remain pending. Earlier notes asking for the intended OS/access scope are superseded by this evidence.

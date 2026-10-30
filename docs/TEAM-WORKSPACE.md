@@ -2,8 +2,8 @@
 
 Updated 30 October 2026. This is the current assignment plan and supersedes older
 hardware assignments in previous versions of this document. The project PC hosts
-the service; Render is not used. Names, deadlines and the PC operating system/access
-scope still need team confirmation. No physical-device work is assigned here.
+the service; Render is not used. Names and deadlines still need team confirmation. The uploaded plan specifies
+Windows PC hosting with phones/computers on the local network; see [source alignment](PLAN-ALIGNMENT.md). No physical-device work is assigned here.
 
 ## Reviewed software baseline
 
@@ -50,7 +50,8 @@ Accounts, permissions, reports, configuration validation and restore tooling are
 - [x] Verify admin browser flows, configuration restrictions and fresh HTTPS/restore drill.
 - [ ] Privately deliver each person's credential entry and obtain assignment acknowledgement.
 - [ ] Have each person rotate their live password; never infer completion from a copy test.
-- [ ] Confirm server PC OS and same-PC/LAN access; complete matching PC HTTPS/network setup.
+- [x] Establish intended Windows PC / local-network access from the uploaded plan.
+- [ ] Inspect actual PC network/WSL details and complete LAN HTTPS/client-trust setup.
 - [ ] Select encrypted separate backup storage, recovery owner and daily schedule; repeat restore drills.
 
 Evidence/runbook: [Member 3 software handoff](MEMBER3-SOFTWARE-HANDOFF.md),
