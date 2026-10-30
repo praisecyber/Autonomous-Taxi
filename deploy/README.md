@@ -105,8 +105,8 @@ password rotation, trip/configuration mutations and second restore happen on cop
 Keep backup files and drill logs private. See `docs/PROBIX-OPERATIONS.md` for the
 completed drill evidence and `docs/ADMIN-ACCOUNTS.md` for permission/configuration rules.
 
-## Selected managed hosting: Render
+## Selected deployment: project PC
 
-See [Render setup](RENDER.md) and the root `render.yaml` Blueprint for same-origin
-frontend/API hosting with persistent SQLite. Account creation in Render and encrypted
-off-machine backups remain pending; local credentials are not automatically migrated.
+The project PC is the server. No managed hosting account is required. Follow
+[PC server setup](PC-SERVER.md) for Linux or Windows with WSL2. Preserve the existing
+accounts/database and use the established same-origin Caddy HTTPS profile.

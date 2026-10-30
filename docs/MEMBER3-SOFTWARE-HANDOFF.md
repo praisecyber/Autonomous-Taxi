@@ -152,3 +152,13 @@ checks remain the recovery evidence. No timer, automatic pruning or remote trans
 has been enabled. Once the deployment owner/destination is selected, run this command
 daily under that service account and monitor nonzero exits; use the documented
 7-daily/4-weekly policy only after verifying at least one recoverable remote copy.
+
+## Deployment decision update — PC server
+
+The user selected the project PC as the server; Render configuration was removed.
+Use [PC server setup](../deploy/PC-SERVER.md). Local use does not require a public
+domain. Other devices require a reachable PC address and a matching HTTPS certificate;
+localhost on another device refers to that device, not the server PC. Public Internet
+exposure is separate and is not enabled. Keep the database on the server PC and
+select a protected separate backup destination. Named owner, PC operating system,
+LAN addressing and automatic-start configuration still need confirmation.
