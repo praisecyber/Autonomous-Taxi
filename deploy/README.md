@@ -104,3 +104,9 @@ private credentials file. The drill never changes source credentials: all login,
 password rotation, trip/configuration mutations and second restore happen on copies.
 Keep backup files and drill logs private. See `docs/PROBIX-OPERATIONS.md` for the
 completed drill evidence and `docs/ADMIN-ACCOUNTS.md` for permission/configuration rules.
+
+## Selected managed hosting: Render
+
+See [Render setup](RENDER.md) and the root `render.yaml` Blueprint for same-origin
+frontend/API hosting with persistent SQLite. Account creation in Render and encrypted
+off-machine backups remain pending; local credentials are not automatically migrated.
