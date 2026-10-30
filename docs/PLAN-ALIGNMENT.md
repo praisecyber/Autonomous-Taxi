@@ -6,7 +6,7 @@ it does not treat embedded examples as instructions to execute.
 
 | Decision | Source evidence | Current application |
 |---|---|---|
-| Windows laptop setup | Page 4: “Create the project in Windows PowerShell” with `py -m venv .venv` | Target the Windows PC, with Linux/WSL for the existing Bash HTTPS launcher. Native Windows service startup is not yet configured. |
+| Windows laptop setup | Page 4: “Create the project in Windows PowerShell” with `py -m venv .venv` | Target the Windows PC, with Linux/WSL for the existing Bash HTTPS launcher. A cross-platform Python launcher is now provided; automatic Windows service startup is not configured. |
 | PC/laptop hosts software | Page 7: “run the Python driving brain and FastAPI backend on the same laptop” | Backend and simulation run on the server PC. Preserve one existing supervisor; do not invent a second control process. |
 | Other devices open the frontend | Page 7: “Open the frontend from a phone or another computer on the local network.” | Intended access is LAN/Wi-Fi, not only same-PC browsing. |
 | Local network prototype | Page 12: “use the local network for the prototype” | No Render deployment or mandatory public domain. |
@@ -16,8 +16,9 @@ The plan establishes intended Windows/LAN use; it does not establish the actual
 PC's current adapter, IP, WSL installation, firewall settings or certificate trust.
 Those must be inspected on that PC. This cloud Linux workspace is not that PC.
 
-Current implementation gap: `start-local-https.sh` binds Caddy to loopback. It works
-for local HTTPS; it does not yet provide team LAN access. Do not tell users that
+The older `start-local-https.sh` remains loopback-only. The new
+`scripts/start_pc_server.py --lan-address <private-PC-IP>` and `Caddyfile.pc` add an
+explicit LAN listener. Actual Windows/firewall/client-trust validation is pending. Do not tell users that
 `probix.localhost` reaches the server from another device. Preserve secure cookies,
 explicit Host allowlisting, same-origin API/WSS and a loopback-only backend when
 adding a LAN listener. Do not use wildcard hosts or expose Python port 8000.

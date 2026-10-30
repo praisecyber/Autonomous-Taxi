@@ -1,7 +1,8 @@
 # Project PC server
 
 The PC hosts the Python backend, frontend files, Caddy HTTPS proxy and SQLite data.
-Render is not used. This is a software simulation service. Keep exactly one backend
+Render is not used. This is a software simulation service. The cross-platform
+launcher below now supports explicit LAN binding. Keep exactly one backend
 worker/supervisor per database. All browser traffic uses the same HTTPS origin.
 
 ## Planned operating system and access
@@ -9,8 +10,8 @@ worker/supervisor per database. All browser traffic uses the same HTTPS origin.
 The uploaded detailed plan specifies Windows PowerShell (PDF page 4), with phones
 or other computers accessing the laptop frontend over the local network (page 7).
 Use **Windows PC + local-network clients** as the intended deployment. See
-[plan alignment](../docs/PLAN-ALIGNMENT.md). The current Bash launcher runs in
-Linux/WSL; it is not a native Windows service, and LAN sharing is not enabled yet.
+[plan alignment](../docs/PLAN-ALIGNMENT.md). The new Python launcher runs on Windows or Linux; automatic Windows service
+installation is not configured. The Bash launcher remains the loopback/WSL option.
 
 ## Linux or Windows with WSL2
 
@@ -74,8 +75,8 @@ only the HTTPS proxy should accept client traffic.
 
 The uploaded plan establishes Windows and LAN use. The actual Windows version,
 WSL networking mode and active PC LAN address have not been inspected here.
-LAN binding and firewall changes are not applied to the user's PC from this cloud
-workspace. No router forwarding,
+The Python launcher can bind an explicitly supplied private PC address. Firewall
+and client trust changes are not applied to the user's PC from this cloud workspace. No router forwarding,
 public domain, or Internet access is needed for same-PC use.
 
 ## Data, backups and recovery
@@ -109,7 +110,7 @@ without signing in or changing records. It connects directly to the selected PC
 and does not use an outbound proxy. It does not verify login, session permissions
 or WSS; run the separate browser/operational checks for those. No insecure TLS mode
 is provided. On Windows native Python, use `.venv\Scripts\python.exe` if that is
-the selected Python environment; the server launcher currently uses Linux/WSL.
+the selected Python environment; use the cross-platform Python launcher below for native Windows.
 
 ## Inspect the Windows server PC before LAN setup
 
@@ -129,3 +130,65 @@ client trust in its public CA and a narrowly scoped Windows firewall rule. WSL m
 need forwarding or mirrored networking depending on its version. Do not apply
 broad firewall or router changes from guessed network details. These inspection
 commands do not enable network access or reveal application passwords.
+
+## Native Windows / LAN launch
+
+Install Python 3.12 and a verified Windows Caddy executable. Keep the checkout and
+runtime data in a private user directory. From PowerShell at the repository root:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e '.[dev]'
+# Put the verified Windows binary at runtime\tools\caddy.exe.
+```
+
+Restore/provision the database using the earlier instructions first. Stop any older
+server before starting this one. Choose the IPv4 address of this PC's intended LAN
+adapter from the inspection command above. Example only, replace this address:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\start_pc_server.py --lan-address 192.168.1.20 --check
+.\.venv\Scripts\python.exe scripts\start_pc_server.py --lan-address 192.168.1.20
+```
+
+`--check` validates configuration/executable/ports without starting servers; it does
+not establish successful database startup or client access. Omit `--lan-address`
+for loopback-only `probix.localhost`. The LAN address must be an RFC1918 private IPv4
+address actually bindable on this PC. Ports are configurable and must be different.
+Do not run the Bash launcher at the same time.
+
+For the example LAN address, clients open `https://192.168.1.20:8443/account`.
+Only the selected IP is an allowed host. The backend remains at 127.0.0.1:8000.
+After startup, the new public CA certificate is:
+`runtime/tls-pc/data/caddy/pki/authorities/local/root.crt`.
+This is a different CA location from the older Bash launcher. Transfer and trust
+only this public certificate on the intended Windows/phone clients; never transfer
+private keys. Validate the certificate identity through a trusted channel.
+Keep runtime files/logs restricted using Windows filesystem permissions; POSIX 0600
+modes alone do not configure Windows ACLs.
+
+On a trusted Windows Private network, an administrator can add a limited rule
+(replace the IP; do not run on an untrusted/public network):
+
+```powershell
+New-NetFirewallRule -DisplayName 'PROBIX HTTPS LAN' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8443 -LocalAddress 192.168.1.20 -RemoteAddress LocalSubnet -Profile Private
+```
+
+HTTPS port 8443 is sufficient; HTTP 8080 redirect is optional. Do not open backend
+port 8000 or add router forwarding. Native Windows avoids WSL forwarding requirements.
+Client isolation on guest Wi-Fi can still prevent access. Prefer a DHCP reservation
+for the PC; an address change requires restart, updated client URLs and matching
+certificate trust checks. No firewall rule is applied automatically.
+
+Keep the launcher terminal open. Ctrl+C stops both children; any child exit stops
+the other. Private logs are under `runtime/tls-pc/`. Check HTTPS readiness using:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\check_pc_server.py --origin https://192.168.1.20:8443 --ca runtime\tls-pc\data\caddy\pki\authorities\local\root.crt
+```
+
+The launcher/configuration were tested in this Linux workspace against an isolated
+restored database, including verified local HTTPS and shutdown. Native Windows
+execution, Windows firewall and phone trust have not been tested here; verify them
+on the server PC before declaring LAN rollout complete. Automatic start at boot,
+off-machine backup scheduling and user credential delivery remain separate steps.

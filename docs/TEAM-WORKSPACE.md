@@ -51,7 +51,8 @@ Accounts, permissions, reports, configuration validation and restore tooling are
 - [ ] Privately deliver each person's credential entry and obtain assignment acknowledgement.
 - [ ] Have each person rotate their live password; never infer completion from a copy test.
 - [x] Establish intended Windows PC / local-network access from the uploaded plan.
-- [ ] Inspect actual PC network/WSL details and complete LAN HTTPS/client-trust setup.
+- [x] Provide cross-platform PC launcher and explicit LAN HTTPS configuration; 49 backend tests and Linux HTTPS/shutdown checks passed.
+- [ ] Inspect actual Windows PC network details, test native startup and complete firewall/client-trust setup.
 - [ ] Select encrypted separate backup storage, recovery owner and daily schedule; repeat restore drills.
 
 Evidence/runbook: [Member 3 software handoff](MEMBER3-SOFTWARE-HANDOFF.md),
