@@ -164,3 +164,14 @@ select a protected separate backup destination. Named owner, PC operating system
 LAN addressing and automatic-start configuration still need confirmation.
 
 The uploaded detailed plan now establishes intended Windows/LAN use; see [plan alignment](PLAN-ALIGNMENT.md). Actual PC network/WSL inspection and LAN HTTPS rollout remain pending. Earlier notes asking for the intended OS/access scope are superseded by this evidence.
+
+## Windows operations preparation
+
+Added `scripts/register_pc_task.ps1` for explicit current-user sign-in/server and daily
+backup registration, with `-WhatIf`, no embedded passwords and no task replacement.
+Nothing has been scheduled on the actual PC. Backup directory checks now inspect
+Windows ACLs rather than POSIX mode bits. Linux regression evidence: 51 tests passed
+and Ruff passed, including checkpoint hash/integrity, non-overwrite and private-directory
+rejection checks. Native Windows ACL and Task Scheduler execution remain unverified;
+follow the [PC guide](../deploy/PC-SERVER.md) before enabling tasks. This does not
+establish encrypted external backups or completed user credential delivery.

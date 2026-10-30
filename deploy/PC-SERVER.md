@@ -192,3 +192,61 @@ restored database, including verified local HTTPS and shutdown. Native Windows
 execution, Windows firewall and phone trust have not been tested here; verify them
 on the server PC before declaring LAN rollout complete. Automatic start at boot,
 off-machine backup scheduling and user credential delivery remain separate steps.
+
+## Optional current-user Windows tasks
+
+After manual Windows startup, LAN HTTPS and a backup run have passed, use the task
+helper on that PC. Review the PowerShell file before running; if local execution
+policy blocks it, follow your administrator's signed-script policy. No task has
+been registered from this cloud environment.
+
+Prepare a private backup folder in `runtime\backups\checkpoints`. In Windows
+Security → Advanced, restrict allow permissions to the service user, SYSTEM and
+Administrators. Review inherited entries; do not alter unrelated project directories.
+The backup command checks Windows ACLs instead of relying on misleading POSIX mode
+bits. It refuses broader allow entries and never silently rewrites ACLs.
+
+Examples, replacing the LAN address and selecting a suitable **local PC time**:
+
+```powershell
+# Preview only:
+.\scripts\register_pc_task.ps1 -Kind Server -LanAddress 192.168.1.20 -WhatIf
+.\scripts\register_pc_task.ps1 -Kind Backup -BackupAt '19:00' -WhatIf
+# Register only after reviewing and testing the configuration:
+.\scripts\register_pc_task.ps1 -Kind Server -LanAddress 192.168.1.20
+.\scripts\register_pc_task.ps1 -Kind Backup -BackupAt '19:00'
+```
+
+19:00 is an example, not an assigned team deadline or configured schedule. The server
+task starts at that user's next sign-in; the backup task runs daily while the user
+is signed in and catches missed runs when available. No password is stored; neither
+task runs as administrator or starts immediately on registration. They do not run
+before login, wake a sleeping PC or provide unattended boot service. Keep the PC
+awake during serving. Existing tasks are never overwritten; duplicate launches are
+ignored by task settings, and the database lease/port checks protect the application.
+
+Review task execution:
+
+```powershell
+Get-ScheduledTaskInfo -TaskName PROBIX-Server
+Get-ScheduledTaskInfo -TaskName PROBIX-Backup
+```
+
+For the server, a running task is expected during service. For backup, inspect
+LastRunTime/LastTaskResult (0 indicates successful completion), new checkpoint and
+hash receipt. Task registration alone proves neither the job nor recovery works.
+Server logs remain under `runtime\tls-pc`. A local checkpoint remains local; it does
+not establish encrypted external storage or a restore drill. Disk space/retention
+must be monitored; no automatic deletion is enabled.
+
+Stop the application through its foreground launcher for a graceful shutdown when
+possible. Windows Task Scheduler can terminate a process tree abruptly; after a
+forced stop, verify no old listener remains before restart. To remove prepared tasks:
+
+```powershell
+Unregister-ScheduledTask -TaskName PROBIX-Server -Confirm
+Unregister-ScheduledTask -TaskName PROBIX-Backup -Confirm
+```
+
+Native Windows Task Scheduler and ACL behavior are not executable in this Linux
+workspace. Test both on the actual Windows PC before relying on unattended operation.

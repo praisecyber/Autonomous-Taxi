@@ -53,7 +53,8 @@ Accounts, permissions, reports, configuration validation and restore tooling are
 - [x] Establish intended Windows PC / local-network access from the uploaded plan.
 - [x] Provide cross-platform PC launcher and explicit LAN HTTPS configuration; 49 backend tests and Linux HTTPS/shutdown checks passed.
 - [ ] Inspect actual Windows PC network details, test native startup and complete firewall/client-trust setup.
-- [ ] Select encrypted separate backup storage, recovery owner and daily schedule; repeat restore drills.
+- [x] Prepare optional current-user Windows sign-in/daily-backup task helper with preview; Windows execution remains unverified.
+- [ ] Test native task/ACL behavior on the PC, select encrypted separate backup storage and recovery owner, then enable the chosen daily schedule.
 
 Evidence/runbook: [Member 3 software handoff](MEMBER3-SOFTWARE-HANDOFF.md),
 [PC server guide](../deploy/PC-SERVER.md). No public domain is required for same-PC use.
