@@ -84,3 +84,19 @@ has been configured. Follow [Member 3 recovery/retention runbook](../docs/MEMBER
 Stop with Ctrl+C in the launcher terminal. Preserve data before upgrades and never
 run two backends against it. After restarting, verify HTTPS health, fresh login,
 WSS telemetry and role boundaries before handing the service to the team.
+
+## Read-only readiness check
+
+After startup, run this on the server PC:
+
+```bash
+.venv/bin/python scripts/check_pc_server.py --ca runtime/tls-local/data/caddy/pki/authorities/local/root.crt
+```
+
+Use `--origin https://<pc-host>:<port>` for an explicitly configured reachable origin.
+The check verifies the certificate/hostname, health, pages, stylesheet and API docs
+without signing in or changing records. It connects directly to the selected PC
+and does not use an outbound proxy. It does not verify login, session permissions
+or WSS; run the separate browser/operational checks for those. No insecure TLS mode
+is provided. On Windows native Python, use `.venv\Scripts\python.exe` if that is
+the selected Python environment; the server launcher currently uses Linux/WSL.

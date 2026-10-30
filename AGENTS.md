@@ -20,5 +20,5 @@ v0.1 implements a simulation, backend, dashboard and bench-only firmware starter
 - Missing / stale sensors are invalid, never substituted with fabricated healthy values.
 - Firmware target builds and hardware tests are separate: report exactly which were run.
 
-## Next milestone
-Implement a read-only hardware telemetry adapter and its parser / timeout tests after confirming the actual board and UART pin assignments. Preserve the runnable simulation throughout.
+## Current assignment scope
+Software only, as requested by the user. Follow docs/TEAM-WORKSPACE.md: connected simulation handoff, bounded telemetry validation with simulated/recorded fixtures, diagnostics fault/reconnect tests and PC-server operations. Hardware milestones in older documents are reference-only and are not current member assignments. Preserve the runnable simulation.
