@@ -1,4 +1,10 @@
 /* All shared typography, forms, cards, tables and interaction states live in shared.css. */
-#new-user-form { max-width: 700px; }
-#configuration-form { max-width: 900px; }
-#users-count { margin-top: 16px; }
+#new-user-form {
+  max-width: 700px;
+}
+#configuration-form {
+  max-width: 900px;
+}
+#users-count {
+  margin-top: 16px;
+}

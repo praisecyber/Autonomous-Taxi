@@ -1,0 +1,142 @@
+/* passenger.css (v2) — small enhancements on top of shared.css.
+   shared.css already provides the layout, sidebar and palette, so this file
+   only adds passenger-specific polish. It does NOT touch <main>, headings
+   or fonts, so it cannot break the sidebar layout. */
+
+body[data-screen="passenger"] {
+  background:
+    radial-gradient(700px 320px at 90% -5%, rgba(34, 197, 94, 0.12), transparent 65%),
+    var(--bg);
+}
+
+/* Status badges: soft tinted fill so state reads at a glance */
+body[data-screen="passenger"] .badge[data-tone="ready"] {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: var(--primary);
+}
+body[data-screen="passenger"] .badge[data-tone="attention"] {
+  background: rgba(250, 204, 21, 0.12);
+  border-color: var(--highlight);
+}
+body[data-screen="passenger"] .connection[data-kind="live"] {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: var(--primary);
+}
+body[data-screen="passenger"] .connection[data-kind="stale"],
+body[data-screen="passenger"] .connection[data-kind="disconnected"] {
+  background: rgba(250, 204, 21, 0.1);
+  border-color: var(--highlight);
+}
+
+/* Sign-in notice: message on the left, action on the right */
+body[data-screen="passenger"] #passenger-access {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-bottom: 24px;
+}
+body[data-screen="passenger"] #passenger-access a {
+  margin-left: auto;
+  font-weight: 650;
+}
+
+/* Destination cards */
+body[data-screen="passenger"] .destination-card {
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+body[data-screen="passenger"] .destination-card:hover:not(:has(input:disabled)) {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+body[data-screen="passenger"] .destination-card:has(input:checked) {
+  background: rgba(250, 204, 21, 0.08);
+}
+body[data-screen="passenger"] .destination-card strong {
+  font-size: 16px;
+  letter-spacing: -0.2px;
+}
+body[data-screen="passenger"] .destination-card:has(input:disabled) {
+  opacity: 0.5;
+  border-style: dashed;
+  cursor: not-allowed;
+}
+body[data-screen="passenger"] .destination-card:has(input:disabled) .stop-note {
+  color: var(--highlight);
+  font-weight: 600;
+}
+
+/* Main booking button */
+body[data-screen="passenger"] #book-trip {
+  width: 100%;
+  min-height: 54px;
+  font-size: 16px;
+}
+
+/* Journey card */
+body[data-screen="passenger"] .trip-route {
+  font-size: 28px;
+  letter-spacing: -0.8px;
+}
+body[data-screen="passenger"] progress {
+  height: 14px;
+  border-radius: 999px;
+  background: var(--bg);
+  -webkit-appearance: none;
+  appearance: none;
+}
+body[data-screen="passenger"] progress::-webkit-progress-bar {
+  background: var(--bg);
+  border-radius: 999px;
+}
+body[data-screen="passenger"] progress::-webkit-progress-value {
+  background: linear-gradient(90deg, var(--primary), var(--highlight));
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+body[data-screen="passenger"] progress::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--primary), var(--highlight));
+  border-radius: 999px;
+}
+body[data-screen="passenger"] #progress-copy {
+  margin: 10px 0 18px;
+}
+
+/* Cancel uses the team's yellow "stop" colour, outlined so it is not the main action */
+body[data-screen="passenger"] #cancel-trip {
+  border-color: var(--highlight);
+  color: var(--highlight);
+}
+body[data-screen="passenger"] #cancel-trip:hover:enabled {
+  background: rgba(250, 204, 21, 0.12);
+  color: var(--highlight);
+}
+
+/* Map sits between the journey text and the metrics */
+body[data-screen="passenger"] #passenger-map {
+  border-top: 1px solid var(--line);
+  padding: 8px 12px 0;
+  background: var(--bg);
+}
+
+/* Metrics read as a compact stat strip */
+body[data-screen="passenger"] .metrics > div + div {
+  border-left: 1px solid var(--line);
+  padding-left: 14px;
+}
+@media (max-width: 600px) {
+  body[data-screen="passenger"] .metrics > div + div {
+    border-left: 0;
+    padding-left: 0;
+  }
+}
+
+/* Recent trips */
+body[data-screen="passenger"] .trip-record:first-child {
+  border-top: 0;
+}
+body[data-screen="passenger"] .empty-state {
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  margin-top: 14px;
+}
