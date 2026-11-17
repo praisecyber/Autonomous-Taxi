@@ -3,8 +3,8 @@
 The shared `frontend/public/telemetry.js` contract is used by all five interfaces
 through `shared.js`. WebSockets are read-only; this module never sends commands.
 It processes each received message immediately without keeping a message history.
-This does not bound the browser/network's internal receive buffer or implement the
-future backend frame queue; Member 2's bounded backend interface work remains open.
+This does not bound the browser/network internal receive buffer. A separate tested one-slot backend input seam
+is now available in `backend/taxi/latest_frame.py`; no camera/device producer is connected.
 
 ## Validation contract
 
@@ -38,7 +38,30 @@ FAULT snapshot stays FAULT; reconnect does not clear server state.
 The backend's `sequence` is a motion-update count, not a heartbeat or capture-time
 clock. It can remain unchanged while stopped. This contract does not claim replay
 protection, capture-age verification or validation of actual device measurements.
-Source timestamps and backend latest-frame queues remain future Member 2 contract work.
+Snapshots now expose `snapshot_at_monotonic_s`, plus telemetry
+`sensor_sampled_at_monotonic_s` and `link_sampled_at_monotonic_s`. These belong to
+the backend process clock, not the browser clock or UTC. The validator requires
+sample times no later than the snapshot and ages consistent within 1 microsecond.
+It does not infer network transit time from cross-machine clocks. Motion sequence
+remains a motion count; no control authority is derived from it.
+
+## Backend latest-frame interface
+
+`LatestFrameBuffer` retains at most one immutable byte payload (default 1 MiB).
+New valid frames replace the slot; a consumer can peek or consume it. Captured time
+must be in the host monotonic clock domain, not supplied directly from a remote
+wall clock. Default maximum age is 0.5 seconds. Only `simulated`/`recorded` sources
+are accepted. Duplicate/out-of-order sequence numbers, future/stale/nonfinite
+timestamps, invalid source and empty/oversized/mutable payloads clear availability
+and raise ValueError. Reading an expired frame returns None. Explicit session reset
+clears sequence history and the slot; it never resets the supervisor or starts a trip.
+
+The seam is thread-safe within one process. It does not decode images, perform neural
+inference, connect hardware, bound external socket buffers or create a new supervisor.
+A future producer must explicitly translate its clock and apply codec validation.
+Tests cover 1,000 rapid publishes retaining only the latest frame, immutable payloads,
+size/age/replay rejection, expiry and reset. Optional perception/model experiments
+remain separate from the runnable simulation.
 
 ## Reproduce
 

@@ -268,7 +268,7 @@ def run(args):
                 sessions[record["username"]] = (client, {"X-Taxi-CSRF": login.json()["csrf_token"]})
                 rotated[record["username"]] = new_password
             checks.append(
-                "all five real account credentials authenticated over verified TLS; forced rotation and old-session revocation passed on the isolated copy"
+                "all five supplied account credentials authenticated over verified TLS; forced rotation and old-session revocation passed on the isolated copy"
             )
             admin, ah = sessions["probix"]
             passenger, ph = sessions["probix.member1"]
@@ -351,7 +351,7 @@ def run(args):
             )
             assert hashlib.sha256(source.read_bytes()).hexdigest() == original_digest
             checks.append(
-                "live source database remained byte-for-byte unchanged throughout the drill"
+                "source database remained byte-for-byte unchanged throughout the drill"
             )
             report = {
                 "hostname": hostname,

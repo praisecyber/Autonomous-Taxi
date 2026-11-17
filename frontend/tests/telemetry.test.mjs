@@ -17,9 +17,12 @@ const snapshot = () => ({
   trip: null,
   route: [],
   sequence: 0,
+  snapshot_at_monotonic_s: 10,
   motor_output_enabled: false,
   telemetry: {
     source: "simulated",
+    sensor_sampled_at_monotonic_s: 10,
+    link_sampled_at_monotonic_s: 10,
     obstacle: false,
     sensor_age_s: 0,
     link_age_s: 0,
@@ -129,8 +132,8 @@ test("parser rejects oversized, nontext and invalid JSON messages", () => {
 test("reported stale or failed samples remain invalid with fresh transport", () => {
   const { api } = harness();
   for (const change of [
-    (s) => (s.telemetry.sensor_age_s = 0.51),
-    (s) => (s.telemetry.link_age_s = 0.51),
+    (s) => { s.telemetry.sensor_age_s = 0.51; s.telemetry.sensor_sampled_at_monotonic_s = 9.49; },
+    (s) => { s.telemetry.link_age_s = 0.51; s.telemetry.link_sampled_at_monotonic_s = 9.49; },
     (s) => (s.telemetry.sensor_failed = true),
     (s) => (s.telemetry.link_failed = true),
   ]) {
@@ -186,4 +189,16 @@ test("reconnect waits for valid data and ignores messages from the old socket", 
   assert.equal(h.timeouts.size, 0);
   h.sockets[1].message(snapshot());
   assert.equal(received.length, 2);
+});
+
+test("backend monotonic sample timestamps must agree with reported ages", () => {
+  const {api}=harness();
+  for(const change of [
+    s=>delete s.snapshot_at_monotonic_s,
+    s=>delete s.telemetry.sensor_sampled_at_monotonic_s,
+    s=>s.telemetry.sensor_sampled_at_monotonic_s=10.1,
+    s=>s.telemetry.link_sampled_at_monotonic_s=9,
+  ]) {
+    const s=snapshot();change(s);assert.equal(api.valid(s),false);
+  }
 });

@@ -1,5 +1,7 @@
-name: Python checks
+name: Software checks
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -27,4 +29,43 @@ jobs:
       - run: node --check frontend/public/api-client.js
       - run: node --check backend/taxi/docs_assets/swagger-init.js
       - run: node --check frontend/server.mjs
-      - run: node --test frontend/tests/server.test.mjs
+      - run: node --check frontend/public/telemetry.js
+      - run: node --test frontend/tests/*.test.mjs
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install -e '.[dev,browser]'
+      - run: python -m playwright install --with-deps chromium
+      - run: npm install --prefix "$RUNNER_TEMP/taxi-axe" axe-core@4.14.0 --no-audit --no-fund
+      - run: python scripts/check_admin_browser.py --screenshots "$RUNNER_TEMP/taxi-screenshots" --axe "$RUNNER_TEMP/taxi-axe/node_modules/axe-core/axe.min.js"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simulation-browser-screenshots
+          path: ${{ runner.temp }}/taxi-screenshots
+          if-no-files-found: ignore
+  windows-pc:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e '.[dev]'
+      - run: python -m pytest -q backend/tests/test_pc_server.py backend/tests/test_backup_checkpoint.py
+      - name: Parse Windows task script
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'scripts/register_pc_task.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count) { $errors | Write-Error; exit 1 }

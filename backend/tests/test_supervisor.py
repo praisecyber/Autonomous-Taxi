@@ -123,3 +123,18 @@ def test_restart_interrupts_active_trip(tmp_path):
     assert reopened.trips()[0]["status"] == "INTERRUPTED"
     assert Supervisor(reopened).state == "READY"
     reopened.close()
+
+
+def test_snapshot_exposes_real_simulation_sample_times_not_motion_sequence(rig):
+    core, clock, _ = rig
+    core.sensor_failed = True
+    clock.advance(0.2)
+    core.step()
+    snapshot = core.snapshot()
+    telemetry = snapshot['telemetry']
+    assert snapshot['snapshot_at_monotonic_s'] == clock.now
+    assert telemetry['sensor_sampled_at_monotonic_s'] == 10
+    assert telemetry['link_sampled_at_monotonic_s'] == clock.now
+    assert telemetry['sensor_age_s'] == pytest.approx(0.2)
+    assert telemetry['link_age_s'] == 0
+    assert snapshot['sequence'] == 0  # At rest, motion count is not a heartbeat.

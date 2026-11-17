@@ -33,6 +33,7 @@
       ) ||
       !Number.isSafeInteger(s.sequence) ||
       s.sequence < 0 ||
+      !finite(s.snapshot_at_monotonic_s) ||
       !Array.isArray(s.route) ||
       s.route.length > nodes.size ||
       s.route.some((n) => !nodes.has(n))
@@ -50,6 +51,14 @@
       )
     )
       return false;
+    for (const [sampleKey, ageKey] of [
+      ["sensor_sampled_at_monotonic_s", "sensor_age_s"],
+      ["link_sampled_at_monotonic_s", "link_age_s"],
+    ]) {
+      const captured = t[sampleKey];
+      if (!finite(captured) || captured > s.snapshot_at_monotonic_s ||
+          Math.abs(s.snapshot_at_monotonic_s - captured - t[ageKey]) > 0.000001) return false;
+    }
     if (
       s.trip !== null &&
       (!record(s.trip) ||

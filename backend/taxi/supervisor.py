@@ -154,9 +154,12 @@ class Supervisor:
             "trip": dict(self.trip) if self.trip else None,
             "route": list(self.path),
             "sequence": self.sequence,
+            "snapshot_at_monotonic_s": now,
             "motor_output_enabled": False,
             "telemetry": {
                 "source": "simulated",
+                "sensor_sampled_at_monotonic_s": self.last_sensor,
+                "link_sampled_at_monotonic_s": self.last_link,
                 "obstacle": self.obstacle,
                 "sensor_age_s": max(0.0, now - self.last_sensor),
                 "link_age_s": max(0.0, now - self.last_link),

@@ -1,9 +1,11 @@
 # Autonomous Taxi — software-only team checklist
 
-Updated 30 October 2026. This is the current assignment plan and supersedes older
+Updated 17 November 2026. This is the current assignment plan and supersedes older
 hardware assignments in previous versions of this document. The project PC hosts
 the service; Render is not used. Names and deadlines still need team confirmation. The uploaded plan specifies
 Windows PC hosting with phones/computers on the local network; see [source alignment](PLAN-ALIGNMENT.md). No physical-device work is assigned here.
+
+Current consolidated evidence: [17 November software handoff](SOFTWARE-HANDOFF-2026-11-17.md). Technical completion is separate from human acceptance and native Windows/LAN rollout.
 
 ## Reviewed software baseline
 
@@ -20,9 +22,11 @@ human handoff. Simulation and recorded fixtures must be labelled as such.
 
 Existing booking/progress/cancellation and identity integration are implemented.
 
-- [ ] **P1-06: handoff** — Demonstrate booking, matching-trip arrival and owned-trip cancellation on phone/desktop.
-- [ ] Verify busy/invalid requests, repeated clicks, stale/disconnected data and cross-passenger denial.
-- [ ] Link manual results, screenshots, relevant tests and reviewed CI output; fix demonstrated defects.
+- [x] **P1-06 technical handoff** — Automated phone/desktop demonstration of booking, matching arrival and owned cancellation; [fresh evidence](SOFTWARE-HANDOFF-2026-11-17.md).
+- [ ] Record human Member 1/2 acceptance and actual phone/LAN demonstration.
+- [x] Verify busy/invalid requests, duplicate-mission rejection, stale/disconnected data and cross-passenger denial — backend/browser tests.
+- [x] Link local screenshots, automated walkthrough and test evidence — [handoff](SOFTWARE-HANDOFF-2026-11-17.md).
+- [ ] Review current remote CI and record manual team results; remote CI API is unavailable here.
 
 Complete when Member 2 can reproduce a passenger-originated simulated mission.
 Use the shared session API; do not create a second auth system.
@@ -32,10 +36,11 @@ Evidence: [frontend review](FRONTEND-REVIEW.md), [account contract](ADMIN-ACCOUN
 
 Existing operator interface, routers and mission guards are implemented.
 
-- [ ] **P2-05: software interface seam** — Define bounded latest-frame/telemetry inputs: source, timestamps, validity, maximum age and malformed/missing behavior.
-- [ ] Implement deterministic simulation/recorded-fixture tests for stale data and bounded queues.
-- [ ] Keep perception/AI logic in the backend and distinguish implemented functions from optional experiments/placeholders.
-- [ ] Lead the joint simulation demo and review Member 4's parser/fault test contract.
+- [x] **P2-05: software interface seam** — Define bounded latest-frame/telemetry inputs: source, timestamps, validity, maximum age and malformed/missing behavior.
+- [x] Implement deterministic simulation/recorded-fixture tests for stale data, replay/future rejection and a one-frame bounded buffer — [contract](TELEMETRY-SOFTWARE.md).
+- [x] Keep perception/AI logic in the backend; document the software seam separately from optional inference/codec/device work.
+- [x] Reproduce the joint software demo and technically review timestamp/parser/fault behavior — [handoff](SOFTWARE-HANDOFF-2026-11-17.md).
+- [ ] Obtain the human integration lead's acceptance.
 
 Preserve one supervisor/worker, one active trip, terminal states, fault latching and
 explicit recovery. Reconnect never authorizes a command.
@@ -64,13 +69,13 @@ Evidence/runbook: [Member 3 software handoff](MEMBER3-SOFTWARE-HANDOFF.md),
 The existing diagnostics interface labels simulation and missing information.
 
 - [x] Add deterministic fresh/stale/missing/malformed/disconnected WebSocket fixtures — [software telemetry evidence](TELEMETRY-SOFTWARE.md).
-- [ ] Member 2 reviews the source timestamp and future backend queue contract.
+- [x] Timestamp and backend buffer contract technically reviewed with deterministic tests — [contract](TELEMETRY-SOFTWARE.md). Human Member 2 acceptance remains separate.
 - [x] Bound frontend message size and validate schema, explicit failure flags, reported ages and transport silence — [contract/tests](TELEMETRY-SOFTWARE.md).
-- [ ] Add capture timestamp semantics only after agreeing the backend contract; motion sequence is not a clock.
+- [x] Add backend monotonic snapshot/sample timestamps and browser age-consistency checks; motion sequence remains separate.
 - [x] Test silence, stale reported samples, malformed messages and WebSocket disconnect/reconnect — deterministic Node and browser checks.
 - [x] Verify FAULT is retained on reconnect and invalid/stale displays stay unavailable until valid data arrives — [browser runner](../scripts/check_admin_browser.py).
-- [ ] Verify diagnostics cannot read private history/events/configuration or issue operator commands.
-- [ ] Link phone/desktop screenshots, parser/freshness/fault test results and a reconnect walkthrough.
+- [x] Verify diagnostics cannot read private history/events/configuration or issue operator commands — backend role regression.
+- [x] Link phone/desktop screenshot locations, parser/freshness/fault results and reconnect walkthrough — [fresh handoff](SOFTWARE-HANDOFF-2026-11-17.md).
 
 Complete when deterministic fixtures reproduce each condition without fabricated healthy
 values or hidden commands. No hardware confirmation, wiring, board builds, motor control
@@ -93,3 +98,5 @@ Backend code lives in `backend/taxi`; no second supervisor or permissive CORS.
 Run appropriate pytest/Ruff/JS/browser checks for changes. Keep credentials, databases,
 private CA keys and generated backups out of Git. Each member uses a feature branch
 and links reviewed evidence. No payment/fleet expansion is assigned in this plan.
+
+Private-data availability note: this resumed workspace has no earlier runtime database/credentials. Fresh November operational evidence uses disposable fixtures only. Preserve/restore original data on the PC; do not recreate real accounts based on this document.
