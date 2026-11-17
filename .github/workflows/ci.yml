@@ -62,10 +62,12 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -e '.[dev]'
       - run: python -m pytest -q backend/tests/test_pc_server.py backend/tests/test_backup_checkpoint.py
-      - name: Parse Windows task script
+      - name: Parse Windows setup and task scripts
         shell: pwsh
         run: |
           $tokens = $null
           $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'scripts/register_pc_task.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count) { $errors | Write-Error; exit 1 }
+          foreach ($file in @('scripts/register_pc_task.ps1', 'scripts/setup_pc_server.ps1')) {
+            [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count) { $errors | Write-Error; exit 1 }
+          }

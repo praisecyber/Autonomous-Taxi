@@ -108,3 +108,25 @@ features. No public hosting or router forwarding is configured.
   `c69489099782eff93c2ad0463a8dd3f70d4d96c5e835b17bf479033142b19d50`.
 
 No real credential or private key is included in this document or committed files.
+
+## Portable PC delivery follow-through
+
+A native Windows setup helper is now available at `scripts/setup_pc_server.ps1`.
+It installs Python 3.12 dependencies, optionally downloads the official Windows x64
+Caddy 2.10.2 archive with a pinned SHA-512 check, optionally restores an existing
+backup to an absent database, and runs PC preflight. `-Start` is explicit. It never
+creates replacement accounts, overwrites data/binaries, configures the firewall,
+changes certificate trust or registers Windows tasks.
+
+`scripts/build_pc_package.py` produces a source-only ZIP with SHA-256 per-file
+receipts and reads it back for integrity verification. It includes required application
+and deployment files while excluding runtime/credentials/private keys, model weights,
+bytecode, firmware and vendor checkouts. It is not a database backup. Native Windows
+execution still needs checking on the actual PC. The existing private database and
+credentials remain unavailable here and have not been replaced.
+
+Package follow-through checks: 77 backend tests passed with the Windows-only ACL
+test skipped locally, seven Node tests passed and Ruff passed. Package-filter tests
+reject nested environment files, runtime databases/credentials, private keys,
+weights, bytecode, vendor paths and traversal. Windows CI parses both setup/task
+helpers; native Windows results still cannot be asserted from this workspace.

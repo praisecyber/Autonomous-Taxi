@@ -250,3 +250,41 @@ Unregister-ScheduledTask -TaskName PROBIX-Backup -Confirm
 
 Native Windows Task Scheduler and ACL behavior are not executable in this Linux
 workspace. Test both on the actual Windows PC before relying on unattended operation.
+
+## Portable Windows software package / guided setup
+
+A source-only ZIP can be created with:
+
+```bash
+.venv/bin/python scripts/build_pc_package.py --output /path/to/new/Autonomous-Taxi-PC.zip
+```
+
+The package includes tracked application/software deployment files and a per-file
+SHA-256 manifest. It excludes runtime databases/credentials/private keys, virtual
+environments, bytecode, firmware, vendor checkouts and model weights. It contains
+no Caddy executable; the setup helper can download the pinned Windows x64 release
+and verify its official SHA-512 checksum. This is a transfer package, not a deployed
+server or backup. Preserve original private data separately.
+
+Extract it into a private directory on the Windows PC. Open PowerShell in its
+`Autonomous-Taxi` folder. Install Python 3.12 first. Then, using your real private
+backup path and PC LAN IPv4 address in place of these examples:
+
+```powershell
+.\scripts\setup_pc_server.ps1 -DownloadCaddy -RestoreBackup 'D:\Protected\taxi-backup.sqlite3' -LanAddress 192.168.1.20
+```
+
+The helper installs Python dependencies, optionally obtains checksum-verified Caddy,
+restores the backup into an absent database and runs preflight. It does not create
+new accounts/passwords, overwrite existing data/binaries, open firewall ports, change
+certificate trust or register tasks. Restore revokes copied sessions. If data or Caddy
+already exist, omit their corresponding setup options. Re-run to start:
+
+```powershell
+.\scripts\setup_pc_server.ps1 -LanAddress 192.168.1.20 -Start
+```
+
+For same-PC use, omit `-LanAddress`. Follow the preceding firewall/public-CA and
+actual phone/desktop validation steps before sharing. The older `setup.ps1` is a
+local demo helper; use `setup_pc_server.ps1` for this HTTPS deployment. Native Windows
+execution and administrator-controlled firewall/trust setup remain unverified here.
